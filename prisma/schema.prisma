@@ -1,0 +1,433 @@
+// collect&display Distribution Portal — Prisma Schema
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ──────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  RETAILER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  PICKING
+  PACKING
+  INVOICE_SENT
+  AWAITING_PAYMENT
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+  OUT_OF_STOCK
+  COMING_SOON
+}
+
+enum ProductBadge {
+  NEW
+  BESTSELLER
+  EXCLUSIVE
+  LIMITED
+  LOW_STOCK
+  COMING_SOON
+}
+
+enum ProductType {
+  BLIND_BOX
+  VINYL_FIGURE
+  PLUSH
+  TRADING_CARD
+  COLLECTIBLE
+  ACCESSORY
+}
+
+enum PricingTier {
+  STANDARD
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum PaymentTerms {
+  PRO_FORMA
+  NET_7
+  NET_14
+  NET_30
+  NET_60
+}
+
+enum AnnouncementType {
+  NEW_BRAND
+  BACK_IN_STOCK
+  CLOSURE
+  PROMOTION
+  GENERAL
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+// ─── USERS & AUTH ───────────────────────────────────────────────────────────
+
+model User {
+  id                String       @id @default(cuid())
+  email             String       @unique
+  passwordHash      String
+  role              UserRole     @default(RETAILER)
+  isActive          Boolean      @default(true)
+  emailVerified     DateTime?
+  lastLoginAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Retailer profile (null for admins)
+  retailer          Retailer?
+
+  // Password reset
+  resetTokens       PasswordResetToken[]
+
+  // Audit log
+  auditLogs         AuditLog[]
+
+  @@index([email])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ─── RETAILERS ──────────────────────────────────────────────────────────────
+
+model Retailer {
+  id                String       @id @default(cuid())
+  userId            String       @unique
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Business info
+  businessName      String
+  contactName       String
+  phone             String?
+  vatNumber         String?
+  poPrefix          String?      // e.g. "WNDTOYS-"
+  salesRepName      String?
+
+  // Commercial terms
+  pricingTier       PricingTier  @default(STANDARD)
+  paymentTerms      PaymentTerms @default(PRO_FORMA)
+  creditLimit       Decimal?     @db.Decimal(10, 2)
+  notes             String?
+
+  // Marketing
+  marketingConsent  Boolean      @default(false)
+
+  // Addresses
+  deliveryAddress   Address?     @relation("DeliveryAddress")
+  billingAddress    Address?     @relation("BillingAddress")
+
+  // Relations
+  orders            Order[]
+  savedBasket       SavedBasketItem[]
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([businessName])
+}
+
+model Address {
+  id              String    @id @default(cuid())
+  line1           String
+  line2           String?
+  city            String
+  county          String?
+  postcode        String
+  country         String    @default("GB")
+
+  // Polymorphic relations
+  deliveryFor     Retailer? @relation("DeliveryAddress", fields: [deliveryForId], references: [id])
+  deliveryForId   String?   @unique
+  billingFor      Retailer? @relation("BillingAddress", fields: [billingForId], references: [id])
+  billingForId    String?   @unique
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ─── BRANDS & PRODUCTS ──────────────────────────────────────────────────────
+
+model Brand {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  logoUrl     String?
+  description String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  sku             String        @unique
+  barcode         String?       @unique
+  name            String
+  description     String?
+
+  // Classification
+  brandId         String
+  brand           Brand         @relation(fields: [brandId], references: [id])
+  type            ProductType
+  status          ProductStatus @default(ACTIVE)
+  badges          ProductBadge[]
+
+  // Pricing
+  unitCost        Decimal       @db.Decimal(10, 2)  // ex-VAT
+  cduSize         Int           // Case Display Unit quantity
+  cduCost         Decimal       @db.Decimal(10, 2)  // unitCost × cduSize
+  unitRrp         Decimal       @db.Decimal(10, 2)
+
+  // Stock
+  availableStock  Int           @default(0)
+  reservedStock   Int           @default(0)  // in open orders
+  lowStockThreshold Int         @default(24)
+
+  // Physical
+  weightGrams     Int?
+  widthMm         Int?
+  heightMm        Int?
+  depthMm         Int?
+
+  // Images
+  images          ProductImage[]
+
+  // Relations
+  orderItems      OrderItem[]
+  importRows      BulkImportRow[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([sku])
+  @@index([barcode])
+  @@index([brandId])
+  @@index([type])
+  @@index([status])
+  @@index([name])
+}
+
+model ProductImage {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url         String
+  altText     String?
+  isPrimary   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ─── ORDERS ─────────────────────────────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique  // e.g. CAD-0042
+
+  // Retailer
+  retailerId      String
+  retailer        Retailer    @relation(fields: [retailerId], references: [id])
+
+  // References
+  poReference     String?
+  deliveryNotes   String?
+  requestedDeliveryDate DateTime?
+  internalNotes   String?
+
+  // Status
+  status          OrderStatus @default(PENDING)
+  statusHistory   OrderStatusHistory[]
+
+  // Line items
+  items           OrderItem[]
+
+  // Financials (stored at order time, ex-VAT)
+  subtotal        Decimal     @db.Decimal(10, 2)
+  vatAmount       Decimal     @db.Decimal(10, 2)
+  grandTotal      Decimal     @db.Decimal(10, 2)
+
+  // Shipping
+  courier         String?
+  trackingNumber  String?
+  trackingUrl     String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+
+  // Documents
+  invoiceUrl      String?
+  invoiceUploadedAt DateTime?
+
+  // Admin
+  pickedBy        String?
+  packedBy        String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([retailerId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([createdAt])
+  @@index([poReference])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+
+  // Snapshot at order time
+  productName     String
+  productSku      String
+  productBarcode  String?
+  brandName       String
+  cduSize         Int
+
+  // Quantities (in CDUs)
+  quantity        Int
+  unitCost        Decimal  @db.Decimal(10, 2)  // per CDU at order time
+  lineTotal       Decimal  @db.Decimal(10, 2)  // quantity × unitCost
+
+  createdAt       DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  changedBy String?     // User ID or "SYSTEM"
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+}
+
+// ─── BASKET ─────────────────────────────────────────────────────────────────
+
+model SavedBasketItem {
+  id          String   @id @default(cuid())
+  retailerId  String
+  retailer    Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  productId   String
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([retailerId, productId])
+  @@index([retailerId])
+}
+
+// ─── ANNOUNCEMENTS ──────────────────────────────────────────────────────────
+
+model Announcement {
+  id          String           @id @default(cuid())
+  title       String
+  body        String
+  type        AnnouncementType @default(GENERAL)
+  isActive    Boolean          @default(true)
+  publishedAt DateTime         @default(now())
+  expiresAt   DateTime?
+  createdBy   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// ─── BULK IMPORT ────────────────────────────────────────────────────────────
+
+model BulkImport {
+  id              String       @id @default(cuid())
+  filename        String
+  fileUrl         String?
+  status          ImportStatus @default(PENDING)
+  totalRows       Int          @default(0)
+  createdRows     Int          @default(0)
+  updatedRows     Int          @default(0)
+  failedRows      Int          @default(0)
+  errorLog        Json?
+  importedBy      String?
+  rows            BulkImportRow[]
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+}
+
+model BulkImportRow {
+  id          String     @id @default(cuid())
+  importId    String
+  import      BulkImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  rowNumber   Int
+  rawData     Json
+  status      String     // "created" | "updated" | "failed" | "skipped"
+  errorMsg    String?
+  productId   String?
+  product     Product?   @relation(fields: [productId], references: [id])
+  createdAt   DateTime   @default(now())
+
+  @@index([importId])
+}
+
+// ─── AUDIT LOG ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   // e.g. "order.created", "product.updated"
+  entity     String?  // e.g. "Order", "Product"
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

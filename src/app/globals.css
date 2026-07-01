@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: "Inter", system-ui, sans-serif;
+
+    /* CSS custom properties so non-Tailwind inline styles can access the palette */
+    --color-brand:        #F0A3BC;
+    --color-brand-hover:  #E88BAA;
+    --color-brand-light:  #FDE8EF;
+    --color-teal:         #5CC8C5;
+    --color-teal-hover:   #48B5B2;
+    --color-teal-light:   #E8F8F7;
+
+    --color-bg-base:      #FFFFFF;
+    --color-bg-surface:   #FAFBFC;
+    --color-bg-elevated:  #F4F5F7;
+
+    --color-text-primary:   #1A1A2E;
+    --color-text-secondary: #4A4A6A;
+    --color-text-muted:     #8888AA;
+
+    --color-border:       rgba(0,0,0,0.09);
+    --color-border-subtle:rgba(0,0,0,0.05);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    color: #1A1A2E;
+    background: #FFFFFF;
+  }
+
+  ::selection {
+    background: rgba(240, 163, 188, 0.30);
+    color: #1A1A2E;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.22);
+  }
+
+  /* Autofill — use white bg, dark text */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset;
+    -webkit-text-fill-color: #1A1A2E;
+    caret-color: #1A1A2E;
+  }
+}
+
+@layer components {
+
+  /* ── Card ─────────────────────────────────────────────── */
+  .card {
+    @apply bg-bg-surface border border-border rounded-lg shadow-card;
+  }
+
+  .card-elevated {
+    @apply bg-white border border-border rounded-lg shadow-card;
+  }
+
+  /* ── Input base ───────────────────────────────────────── */
+  .input-base {
+    @apply w-full bg-white border border-border rounded text-text-primary
+           placeholder:text-text-muted px-3 py-2 text-sm outline-none
+           focus:border-brand focus:ring-2 focus:ring-brand/20
+           transition-colors duration-150;
+  }
+
+  /* ── Badge ────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  /* ── Stat card ────────────────────────────────────────── */
+  .stat-card {
+    @apply card p-5 flex flex-col gap-1;
+  }
+
+  /* ── Sidebar nav items ────────────────────────────────── */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded text-sm font-medium
+           text-text-secondary hover:text-text-primary hover:bg-bg-elevated
+           transition-all duration-150 cursor-pointer;
+  }
+
+  .nav-item-active {
+    @apply bg-brand-light text-brand-dark font-semibold;
+  }
+
+  /* ── Section headings ─────────────────────────────────── */
+  .section-label {
+    @apply text-xs font-semibold text-text-muted uppercase tracking-wider;
+  }
+
+  /* ── Table ────────────────────────────────────────────── */
+  .table-header-cell {
+    @apply text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-4 py-3 bg-bg-elevated;
+  }
+
+  .table-cell {
+    @apply px-4 py-3 text-sm text-text-primary;
+  }
+
+  /* ── Pill filter chip ─────────────────────────────────── */
+  .filter-chip {
+    @apply px-3 py-1 rounded-full text-xs font-medium transition-colors
+           bg-bg-elevated text-text-secondary hover:bg-brand-light hover:text-brand-dark;
+  }
+
+  .filter-chip-active {
+    @apply bg-brand text-white shadow-brand;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Pink/teal gradient border on hover — for product cards etc */
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(240,163,188,0.6), rgba(92,200,197,0.6));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+                  linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .gradient-border:hover::before {
+    opacity: 1;
+  }
+
+  /* Subtle pink top-border accent for active sidebar items */
+  .pink-accent-left {
+    border-left: 3px solid var(--color-brand);
+  }
+}

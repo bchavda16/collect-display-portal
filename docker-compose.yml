@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cad-portal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cad
+      POSTGRES_PASSWORD: cad_dev_password
+      POSTGRES_DB: collect_display
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cad -d collect_display']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: pgAdmin for a web-based DB browser
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cad-portal-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@collectanddisplay.com
+      PGADMIN_DEFAULT_PASSWORD: pgadmin_password
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '5050:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+
+# ─── Usage ────────────────────────────────────────────────────────────────────
+#
+# Start just the database:
+#   docker compose up -d postgres
+#
+# Start with pgAdmin (optional UI):
+#   docker compose --profile tools up -d
+#   Then open: http://localhost:5050
+#   Add server: host=postgres, port=5432, user=cad, password=cad_dev_password
+#
+# Connection string for .env.local:
+#   DATABASE_URL="postgresql://cad:cad_dev_password@localhost:5432/collect_display"
+#
+# Stop everything:
+#   docker compose down
+#
+# Wipe all data and start fresh:
+#   docker compose down -v
