@@ -28,7 +28,7 @@ async function main() {
       name: 'POP MART',
       slug: 'pop-mart',
       description: 'Leading designer toy brand from Beijing, home of Labubu, Molly, and SKULLPANDA.',
-      website: 'https://www.popmart.com',
+      
     },
   })
 
@@ -39,7 +39,7 @@ async function main() {
       name: 'Funko',
       slug: 'funko',
       description: 'Pop culture collectibles and vinyl figures.',
-      website: 'https://www.funko.com',
+      
     },
   })
 
@@ -50,7 +50,7 @@ async function main() {
       name: 'Sonny Angel',
       slug: 'sonny-angel',
       description: 'Miniature angel figurines from Dreams, Inc.',
-      website: 'https://www.sonnyangel.com',
+      
     },
   })
 
@@ -61,7 +61,7 @@ async function main() {
       name: 'SMISKI',
       slug: 'smiski',
       description: 'Glow-in-the-dark mystery figures by Dreams, Inc.',
-      website: 'https://www.smiski.com',
+      
     },
   })
 
