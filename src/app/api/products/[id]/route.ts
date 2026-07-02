@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { prisma } from "@/lib/prisma";
 import { updateProductSchema } from "@/lib/validations";
 import type { ApiResponse } from "@/types";
@@ -11,7 +11,7 @@ interface Params {
 
 export async function GET(_req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Unauthorised" },
@@ -43,7 +43,7 @@ export async function GET(_req: NextRequest, { params }: Params): Promise<NextRe
 
 export async function PATCH(req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Forbidden" },
@@ -91,7 +91,7 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
 
 export async function DELETE(_req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Forbidden" },

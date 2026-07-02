@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { PortalSidebar } from "@/components/portal/PortalSidebar";
 import { BasketDrawer } from "@/components/portal/BasketDrawer";
 
@@ -9,7 +9,7 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session) redirect("/login");
   if (session.user.role === "ADMIN") redirect("/admin/dashboard");

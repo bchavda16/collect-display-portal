@@ -1,5 +1,5 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatRelativeDate } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/ui/Badge";
@@ -9,7 +9,7 @@ import { Package, ClipboardList, Clock, CreditCard, ChevronRight, Megaphone } fr
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session) return null;
 
   // Get retailer context

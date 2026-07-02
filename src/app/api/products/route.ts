@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { prisma } from "@/lib/prisma";
 import { productFiltersSchema } from "@/lib/validations";
 import type { ApiResponse, PaginatedResponse, ProductWithBrand } from "@/types";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Unauthorised" },
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Forbidden" },

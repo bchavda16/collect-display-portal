@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema } from "@/lib/validations";
 import { generateOrderNumber } from "@/lib/utils";
@@ -9,7 +9,7 @@ import type { ApiResponse, PaginatedResponse } from "@/types";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Unauthorised" },
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Unauthorised" },

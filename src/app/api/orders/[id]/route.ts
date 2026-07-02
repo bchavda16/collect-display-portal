@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { prisma } from "@/lib/prisma";
 import { updateOrderStatusSchema } from "@/lib/validations";
 import { sendStatusUpdate } from "@/lib/email";
@@ -12,7 +12,7 @@ interface Params {
 
 export async function GET(_req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Unauthorised" },
@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest, { params }: Params): Promise<NextRe
 
 export async function PATCH(req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Forbidden" },

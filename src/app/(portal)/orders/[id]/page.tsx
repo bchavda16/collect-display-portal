@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ChevronLeft, Package, Truck, ExternalLink } from "lucide-react";
@@ -34,7 +34,7 @@ export default async function OrderDetailPage({
 }: {
   params: { id: string };
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session) return null;
 
   const order = await prisma.order.findUnique({
