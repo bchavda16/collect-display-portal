@@ -2,12 +2,16 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import type { UserRole } from "@prisma/client"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
   trustHost: true,
   session: { strategy: "jwt" },
-  pages: { signIn: "/login", error: "/login" },
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   providers: [
     Credentials({
       credentials: {
@@ -16,13 +20,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
+
         const user = await prisma.user.findUnique({
           where: { email: (credentials.email as string).toLowerCase() },
           include: { retailer: { select: { id: true } } },
         })
+
         if (!user || !user.isActive) return null
+
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash)
         if (!valid) return null
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        })
+
         return {
           id: user.id,
           email: user.email,
@@ -34,6 +47,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    authorized({ auth, request: { nextUrl } }) {
+      const isLoggedIn = !!auth?.user
+      const isAdminPath = nextUrl.pathname.startsWith("/admin")
+      const isLoginPage = nextUrl.pathname === "/login"
+
+      if (isLoginPage) {
+        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl))
+        return true
+      }
+
+      if (!isLoggedIn) return false
+
+      if (isAdminPath && (auth?.user as any)?.role !== "ADMIN") {
+        return Response.redirect(new URL("/dashboard", nextUrl))
+      }
+
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
@@ -52,3 +83,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 })
+
+declare module "next-auth" {
+  interface User {
+    role: UserRole
+    retailerId?: string
+  }
+  interface Session {
+    user: {
+      id: string
+      email: string
+      name: string
+      role: UserRole
+      retailerId?: string
+    }
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+    role: UserRole
+    retailerId?: string
+  }
+}

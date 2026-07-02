@@ -1,156 +1,108 @@
+import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma"
+import bcrypt from "bcryptjs"
+import { sendWelcomeEmail } from "@/lib/email"
 
-
-import { prisma } from "@/lib/prisma";
-import { createRetailerSchema } from "@/lib/validations";
-import bcrypt from "bcryptjs";
-import { sendWelcomeEmail } from "@/lib/email";
-import type { ApiResponse, PaginatedResponse } from "@/types";
-
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
-      );
+    const session = await auth()
+    if (!session?.user || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { searchParams } = req.nextUrl;
-    const page = parseInt(searchParams.get("page") ?? "1");
-    const limit = parseInt(searchParams.get("limit") ?? "20");
-    const search = searchParams.get("search") ?? undefined;
+    const { searchParams } = req.nextUrl
+    const page = parseInt(searchParams.get("page") ?? "1")
+    const limit = parseInt(searchParams.get("limit") ?? "20")
+    const search = searchParams.get("search") ?? undefined
 
-    const where: Record<string, unknown> = {};
-    if (search) {
-      where.OR = [
-        { companyName: { contains: search, mode: "insensitive" } },
-        { accountCode: { contains: search, mode: "insensitive" } },
-        { users: { some: { email: { contains: search, mode: "insensitive" } } } },
-      ];
-    }
+    const where: any = search ? {
+      OR: [
+        { businessName: { contains: search, mode: "insensitive" } },
+        { contactName: { contains: search, mode: "insensitive" } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+      ],
+    } : {}
 
     const [total, retailers] = await Promise.all([
       prisma.retailer.count({ where }),
       prisma.retailer.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { businessName: "asc" },
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          users: { select: { id: true, name: true, email: true, lastLoginAt: true } },
-          addresses: { where: { isPrimary: true }, take: 1 },
+          user: { select: { id: true, email: true, createdAt: true } },
+          addresses: true,
           _count: { select: { orders: true } },
         },
       }),
-    ]);
+    ])
 
-    return NextResponse.json<ApiResponse<PaginatedResponse<(typeof retailers)[0]>>>({
-      success: true,
-      data: { data: retailers, total, page, limit, totalPages: Math.ceil(total / limit) },
-    });
+    return NextResponse.json({ data: retailers, total, page, limit, totalPages: Math.ceil(total / limit) })
   } catch (error) {
-    console.error("[GET /api/retailers]", error);
-    return NextResponse.json<ApiResponse<null>>(
-      { success: false, error: "Failed to fetch retailers" },
-      { status: 500 }
-    );
+    console.error("[GET /api/retailers]", error)
+    return NextResponse.json({ error: "Failed to fetch retailers" }, { status: 500 })
   }
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
-      );
+    const session = await auth()
+    if (!session?.user || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const body = await req.json();
-    const { email, name, password, companyName, phone, accountCode, paymentTerms, creditLimitPence, pricingTier, address } =
-      createRetailerSchema.parse(body);
+    const body = await req.json()
+    const { email, businessName, contactName, phone, vatNumber, pricingTier, paymentTerms, creditLimitPence, address } = body
 
-    // Check for duplicate email or account code
-    const [existingUser, existingAccount] = await Promise.all([
-      prisma.user.findUnique({ where: { email } }),
-      prisma.retailer.findUnique({ where: { accountCode } }),
-    ]);
+    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
+    if (existing) return NextResponse.json({ error: "Email already registered" }, { status: 409 })
 
-    if (existingUser) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "A user with this email already exists" },
-        { status: 409 }
-      );
-    }
-
-    if (existingAccount) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Account code is already in use" },
-        { status: 409 }
-      );
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const tempPassword = Math.random().toString(36).slice(-8) + "A1!"
+    const passwordHash = await bcrypt.hash(tempPassword, 12)
 
     const retailer = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
+        data: { email: email.toLowerCase(), passwordHash, role: "RETAILER", isActive: true },
+      })
+      const r = await tx.retailer.create({
         data: {
-          email,
-          name,
-          password: hashedPassword,
-          role: "RETAILER",
-        },
-      });
-
-      const newRetailer = await tx.retailer.create({
-        data: {
-          companyName,
-          phone,
-          accountCode,
-          paymentTerms,
-          creditLimitPence,
-          pricingTier,
-          users: { connect: { id: user.id } },
-          addresses: {
+          userId: user.id,
+          businessName,
+          contactName,
+          phone: phone ?? null,
+          vatNumber: vatNumber ?? null,
+          pricingTier: pricingTier ?? "STANDARD",
+          paymentTerms: paymentTerms ?? "PROFORMA",
+          creditLimitPence: creditLimitPence ?? null,
+          addresses: address ? {
             create: {
-              ...address,
-              isPrimary: true,
+              line1: address.line1,
+              line2: address.line2 ?? null,
+              city: address.city,
+              county: address.county ?? null,
+              postcode: address.postcode,
+              country: address.country ?? "GB",
+              isDefault: true,
             },
-          },
+          } : undefined,
         },
-        include: {
-          users: true,
-          addresses: true,
-        },
-      });
+      })
+      return { ...r, user, tempPassword }
+    })
 
-      await tx.auditLog.create({
-        data: {
-          action: "RETAILER_CREATED",
-          entityType: "Retailer",
-          entityId: newRetailer.id,
-          userId: session.user.id,
-        },
-      });
+    sendWelcomeEmail({
+      to: email,
+      businessName,
+      contactName,
+      tempPassword,
+      loginUrl: `${process.env.NEXTAUTH_URL}/login`,
+    }).catch(console.error)
 
-      return newRetailer;
-    });
-
-    sendWelcomeEmail({ to: email, name, companyName, password }).catch(console.error);
-
-    return NextResponse.json<ApiResponse<typeof retailer>>(
-      { success: true, data: retailer },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, data: retailer }, { status: 201 })
   } catch (error) {
-    console.error("[POST /api/retailers]", error);
-    return NextResponse.json<ApiResponse<null>>(
-      { success: false, error: "Failed to create retailer" },
-      { status: 500 }
-    );
+    console.error("[POST /api/retailers]", error)
+    return NextResponse.json({ error: "Failed to create retailer" }, { status: 500 })
   }
 }
