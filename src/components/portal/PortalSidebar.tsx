@@ -3,102 +3,88 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import {
-  LayoutDashboard, Package, ClipboardList, ShoppingCart,
-  Truck, User, LogOut, ShoppingBag
-} from 'lucide-react'
+import { LayoutDashboard, Package, ClipboardList, Truck, User, LogOut, ShoppingCart } from 'lucide-react'
 import { useBasket } from '@/hooks/useBasket'
 
 const navItems = [
-  { href: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/stock',      label: 'Live Stock',  icon: Package },
-  { href: '/orders',     label: 'My Orders',   icon: ClipboardList },
-  { href: '/tracking',   label: 'Tracking',    icon: Truck },
-  { href: '/account',    label: 'Account',     icon: User },
+  { href: '/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/stock',     label: 'Live Stock',  icon: Package },
+  { href: '/orders',    label: 'My Orders',   icon: ClipboardList },
+  { href: '/tracking',  label: 'Tracking',    icon: Truck },
+  { href: '/account',   label: 'Account',     icon: User },
 ]
+
+const s = {
+  sidebar: { width: 220, flexShrink: 0, height: '100vh', position: 'sticky' as const, top: 0, display: 'flex', flexDirection: 'column' as const, background: 'white', borderRight: '1px solid rgba(0,0,0,0.08)' },
+  logoArea: { padding: '18px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' },
+  logoText: { fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', color: '#1A1A2E' },
+  logoSub: { fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8888AA', marginTop: 2 },
+  nav: { flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column' as const, gap: 2, overflowY: 'auto' as const },
+  navItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#4A4A6A', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
+  navActive: { background: '#FDE8EF', color: '#C4638A', fontWeight: 600 },
+  basketBtn: { margin: '0 8px 8px', background: '#FDE8EF', border: '1px solid rgba(240,163,188,0.35)', borderRadius: 10, padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' },
+  basketLabel: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#C4638A' },
+  basketCount: { background: '#F0A3BC', color: 'white', fontSize: 10, fontWeight: 700, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  footer: { padding: '10px', borderTop: '1px solid rgba(0,0,0,0.08)' },
+  userRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' },
+  avatar: { width: 28, height: 28, borderRadius: '50%', background: '#FDE8EF', border: '1px solid rgba(240,163,188,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#C4638A', flexShrink: 0 },
+  userName: { fontSize: 12, fontWeight: 500, color: '#1A1A2E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+  userRole: { fontSize: 10, color: '#8888AA' },
+}
 
 export function PortalSidebar({ onBasketOpen }: { onBasketOpen?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const { data: basket } = useBasket()
+  const totalItems = basket?.items.reduce((s: number, i: any) => s + i.quantity, 0) ?? 0
 
-  const totalItems = basket?.items.reduce((s, i) => s + i.quantity, 0) ?? 0
+  const handleBasketOpen = () => {
+    window.dispatchEvent(new Event('open-basket'))
+  }
 
   return (
-    <aside className="w-60 flex-shrink-0 h-screen sticky top-0 flex flex-col bg-white border-r border-border">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-border">
-        <div className="flex items-center gap-2">
-          {/* Pink bar accent */}
-          <div className="w-1 h-8 rounded-full bg-brand" />
+    <aside style={s.sidebar}>
+      <div style={s.logoArea}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 28, borderRadius: 99, background: '#F0A3BC' }} />
           <div>
-            <span className="text-base font-bold tracking-tight text-text-primary">
-              collect<span className="text-brand">&</span>display
-            </span>
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-text-muted uppercase mt-0.5">
-              Distribution Portal
-            </p>
+            <div style={s.logoText}>collect<span style={{ color: '#F0A3BC' }}>&</span>display</div>
+            <div style={s.logoSub}>Distribution Portal</div>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav style={s.nav}>
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`nav-item ${active ? 'nav-item-active' : ''}`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+            <Link key={href} href={href} style={{ ...s.navItem, ...(active ? s.navActive : {}) }}>
+              <Icon size={16} />
               {label}
             </Link>
           )
         })}
       </nav>
 
-      {/* Basket button */}
-      <div className="px-3 pb-3">
-        <button
-          onClick={onBasketOpen}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg
-                     bg-brand-light hover:bg-brand/20 border border-brand/25
-                     text-brand-dark font-medium text-sm transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" />
-            <span>My Basket</span>
+      <div style={{ padding: '0 8px 8px' }}>
+        <button onClick={handleBasketOpen} style={s.basketBtn}>
+          <div style={s.basketLabel}>
+            <ShoppingCart size={14} />
+            My Basket
           </div>
-          {totalItems > 0 && (
-            <span className="bg-brand text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-              {totalItems > 99 ? '99+' : totalItems}
-            </span>
-          )}
+          {totalItems > 0 && <div style={s.basketCount}>{totalItems > 99 ? '99+' : totalItems}</div>}
         </button>
       </div>
 
-      {/* User footer */}
-      <div className="px-3 pb-4 border-t border-border pt-3">
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <div className="w-7 h-7 rounded-full bg-brand-light border border-brand/30 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-brand-dark">
-              {session?.user?.email?.[0]?.toUpperCase() ?? '?'}
-            </span>
+      <div style={s.footer}>
+        <div style={s.userRow}>
+          <div style={s.avatar}>{session?.user?.email?.[0]?.toUpperCase() ?? '?'}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={s.userName}>{(session?.user as any)?.businessName ?? session?.user?.email}</div>
+            <div style={s.userRole}>Retailer</div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-text-primary truncate">
-              {session?.user?.businessName ?? session?.user?.email}
-            </p>
-            <p className="text-[10px] text-text-muted">Retailer</p>
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-text-muted hover:text-rose transition-colors"
-            title="Sign out"
-          >
-            <LogOut className="w-3.5 h-3.5" />
+          <button onClick={() => signOut({ callbackUrl: '/login' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8888AA', padding: 4 }} title="Sign out">
+            <LogOut size={14} />
           </button>
         </div>
       </div>

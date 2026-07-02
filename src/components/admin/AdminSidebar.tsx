@@ -3,73 +3,67 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import {
-  LayoutDashboard, Package, ClipboardList,
-  Building2, Upload, LogOut, Settings
-} from 'lucide-react'
+import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut } from 'lucide-react'
 
 const navItems = [
-  { href: '/admin/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/admin/orders',     label: 'Orders',      icon: ClipboardList },
-  { href: '/admin/products',   label: 'Products',    icon: Package },
-  { href: '/admin/retailers',  label: 'Retailers',   icon: Building2 },
-  { href: '/admin/imports',    label: 'Imports',     icon: Upload },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/orders',    label: 'Orders',    icon: ClipboardList },
+  { href: '/admin/products',  label: 'Products',  icon: Package },
+  { href: '/admin/retailers', label: 'Retailers', icon: Building2 },
+  { href: '/admin/imports',   label: 'Imports',   icon: Upload },
 ]
+
+const s = {
+  sidebar: { width: 220, flexShrink: 0, height: '100vh', position: 'sticky' as const, top: 0, display: 'flex', flexDirection: 'column' as const, background: 'white', borderRight: '1px solid rgba(0,0,0,0.08)' },
+  logoArea: { padding: '18px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' },
+  logoText: { fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', color: '#1A1A2E' },
+  logoSub: { fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8888AA', marginTop: 2 },
+  nav: { flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column' as const, gap: 2, overflowY: 'auto' as const },
+  navItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#4A4A6A', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
+  navActive: { background: '#FDE8EF', color: '#C4638A', fontWeight: 600 },
+  footer: { padding: '10px', borderTop: '1px solid rgba(0,0,0,0.08)' },
+  userRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' },
+  avatar: { width: 28, height: 28, borderRadius: '50%', background: '#E8F8F7', border: '1px solid rgba(92,200,197,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#3A9E9B', flexShrink: 0 },
+  userName: { fontSize: 12, fontWeight: 500, color: '#1A1A2E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+  userRole: { fontSize: 10, color: '#8888AA' },
+}
 
 export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-60 flex-shrink-0 h-screen sticky top-0 flex flex-col bg-white border-r border-border">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-1 h-8 rounded-full bg-gradient-brand" />
+    <aside style={s.sidebar}>
+      <div style={s.logoArea}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 28, borderRadius: 99, background: 'linear-gradient(135deg, #F0A3BC, #5CC8C5)' }} />
           <div>
-            <span className="text-base font-bold tracking-tight text-text-primary">
-              collect<span className="text-brand">&</span>display
-            </span>
-            <p className="text-[10px] font-semibold tracking-[0.12em] uppercase mt-0.5">
-              <span className="text-teal-dark">Admin</span>
-              <span className="text-text-muted"> Panel</span>
-            </p>
+            <div style={s.logoText}>collect<span style={{ color: '#F0A3BC' }}>&</span>display</div>
+            <div style={s.logoSub}><span style={{ color: '#3A9E9B' }}>Admin</span> Panel</div>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav style={s.nav}>
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`nav-item ${active ? 'nav-item-active' : ''}`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+            <Link key={href} href={href} style={{ ...s.navItem, ...(active ? s.navActive : {}) }}>
+              <Icon size={16} />
               {label}
             </Link>
           )
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 pb-4 border-t border-border pt-3">
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <div className="w-7 h-7 rounded-full bg-teal-light border border-teal/30 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-teal-dark">A</span>
+      <div style={s.footer}>
+        <div style={s.userRow}>
+          <div style={s.avatar}>A</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={s.userName}>Administrator</div>
+            <div style={s.userRole}>collect&display</div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-text-primary truncate">Administrator</p>
-            <p className="text-[10px] text-text-muted">collect&display</p>
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-text-muted hover:text-rose transition-colors"
-            title="Sign out"
-          >
-            <LogOut className="w-3.5 h-3.5" />
+          <button onClick={() => signOut({ callbackUrl: '/login' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8888AA', padding: 4 }} title="Sign out">
+            <LogOut size={14} />
           </button>
         </div>
       </div>
