@@ -8,15 +8,74 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum UserRole { ADMIN RETAILER }
-enum OrderStatus { PLACED CONFIRMED PROCESSING PICKED PACKED DISPATCHED OUT_FOR_DELIVERY DELIVERED CANCELLED }
-enum ProductStatus { ACTIVE LOW_STOCK OUT_OF_STOCK COMING_SOON DISCONTINUED }
-enum ProductBadge { NEW BEST_SELLER EXCLUSIVE LOW_STOCK COMING_SOON }
-enum ProductType { BLIND_BOX FIGURE PLUSH ACCESSORY BUNDLE }
-enum PricingTier { STANDARD SILVER GOLD PLATINUM }
-enum PaymentTerms { PROFORMA NET_14 NET_30 NET_60 }
-enum AnnouncementType { INFO WARNING SUCCESS PROMO }
-enum ImportStatus { PENDING PROCESSING COMPLETE FAILED }
+enum UserRole {
+  ADMIN
+  RETAILER
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PROCESSING
+  PICKED
+  PACKED
+  DISPATCHED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum ProductStatus {
+  ACTIVE
+  LOW_STOCK
+  OUT_OF_STOCK
+  COMING_SOON
+  DISCONTINUED
+}
+
+enum ProductBadge {
+  NEW
+  BEST_SELLER
+  EXCLUSIVE
+  LOW_STOCK
+  COMING_SOON
+}
+
+enum ProductType {
+  BLIND_BOX
+  FIGURE
+  PLUSH
+  ACCESSORY
+  BUNDLE
+}
+
+enum PricingTier {
+  STANDARD
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum PaymentTerms {
+  PROFORMA
+  NET_14
+  NET_30
+  NET_60
+}
+
+enum AnnouncementType {
+  INFO
+  WARNING
+  SUCCESS
+  PROMO
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
 
 model User {
   id           String     @id @default(cuid())
@@ -29,6 +88,7 @@ model User {
   updatedAt    DateTime   @updatedAt
   retailer     Retailer?
   auditLogs    AuditLog[]
+
   @@index([email])
 }
 
@@ -49,6 +109,7 @@ model Retailer {
   savedBasket      SavedBasketItem[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+
   @@index([userId])
   @@index([businessName])
 }
@@ -67,6 +128,7 @@ model Address {
   isDefault  Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
   @@index([retailerId])
 }
 
@@ -80,6 +142,7 @@ model Brand {
   products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
   @@index([slug])
 }
 
@@ -104,8 +167,10 @@ model Product {
   savedBasket       SavedBasketItem[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+
   @@index([sku])
   @@index([brandId])
+  @@index([productType])
   @@index([status])
 }
 
@@ -118,6 +183,7 @@ model ProductImage {
   isPrimary Boolean  @default(false)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+
   @@index([productId])
 }
 
@@ -145,6 +211,7 @@ model Order {
   invoiceNumber         String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
+
   @@index([retailerId])
   @@index([orderNumber])
   @@index([status])
@@ -164,6 +231,7 @@ model OrderItem {
   unitCostPence  Int
   lineTotalPence Int
   createdAt      DateTime @default(now())
+
   @@index([orderId])
   @@index([productId])
 }
@@ -176,6 +244,7 @@ model OrderStatusHistory {
   note      String?
   changedBy String?
   createdAt DateTime    @default(now())
+
   @@index([orderId])
 }
 
@@ -188,6 +257,7 @@ model SavedBasketItem {
   quantity   Int      @default(1)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
   @@unique([retailerId, productId])
   @@index([retailerId])
 }
@@ -228,6 +298,7 @@ model BulkImportRow {
   errorMsg  String?
   productId String?
   createdAt DateTime   @default(now())
+
   @@index([importId])
 }
 
@@ -240,6 +311,7 @@ model AuditLog {
   entityId   String?
   metadata   Json?
   createdAt  DateTime @default(now())
+
   @@index([userId])
   @@index([action])
   @@index([createdAt])
