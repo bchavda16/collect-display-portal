@@ -9,7 +9,7 @@ import { checkoutSchema, type CheckoutInput } from "@/lib/validations";
 import { useBasket } from "@/hooks/useBasket";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrencyFromPounds } from "@/lib/utils";
 import { toast } from "@/components/ui/Toaster";
 import type { ApiResponse } from "@/types";
 import Link from "next/link";
@@ -136,7 +136,7 @@ export default function CheckoutPage() {
             loading={isSubmitting}
             className="w-full"
           >
-            Place Order · {formatCurrency(basket.totalPence)}
+            Place Order · {formatCurrencyFromPounds(basket.totalPence)}
           </Button>
 
           <p className="text-xs text-text-muted text-center">
@@ -156,13 +156,13 @@ export default function CheckoutPage() {
 
           <div className="flex flex-col gap-2">
             {basket.items.map((item) => (
-              <div key={item.productId} className="flex justify-between text-xs">
+              <div key={item.id} className="flex justify-between text-xs">
                 <span className="text-text-secondary truncate mr-2 flex-1">
-                  {item.product.name}{" "}
+                  {item.productName}{" "}
                   <span className="text-text-muted">×{item.quantity}</span>
                 </span>
                 <span className="text-text-primary font-medium shrink-0">
-                  {formatCurrency(item.lineTotalPence)}
+                  {formatCurrencyFromPounds(item.lineTotalPence)}
                 </span>
               </div>
             ))}
@@ -171,15 +171,15 @@ export default function CheckoutPage() {
           <div className="border-t border-border pt-3 flex flex-col gap-1.5">
             <div className="flex justify-between text-xs text-text-secondary">
               <span>Subtotal</span>
-              <span>{formatCurrency(basket.subtotalPence)}</span>
+              <span>{formatCurrencyFromPounds(basket.subtotalPence)}</span>
             </div>
             <div className="flex justify-between text-xs text-text-secondary">
               <span>VAT (20%)</span>
-              <span>{formatCurrency(basket.vatPence)}</span>
+              <span>{formatCurrencyFromPounds(basket.vatPence)}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-text-primary pt-1">
               <span>Total</span>
-              <span>{formatCurrency(basket.totalPence)}</span>
+              <span>{formatCurrencyFromPounds(basket.totalPence)}</span>
             </div>
             <p className="text-[10px] text-text-muted">
               {basket.totalUnits} units · {basket.totalCDUs} CDUs
