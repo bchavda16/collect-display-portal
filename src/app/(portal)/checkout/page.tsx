@@ -38,7 +38,7 @@ export default function CheckoutPage() {
     const json: ApiResponse<{ orderNumber: string }> = await res.json();
 
     if (!json.success || !json.data) {
-      toast({ type: "error", title: "Order failed", description: json.error });
+      toast("Order failed", "error");
       return;
     }
 
