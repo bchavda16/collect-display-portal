@@ -8,9 +8,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if ((session.user as any).role !== "ADMIN") redirect("/dashboard")
 
   return (
-    <div className="flex h-screen bg-bg-surface overflow-hidden">
+    <div className="admin-layout">
       <AdminSidebar />
-      <main className="flex-1 overflow-y-auto scrollbar-none">{children}</main>
+      <main className="admin-main">{children}</main>
     </div>
   )
 }

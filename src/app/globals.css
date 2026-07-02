@@ -125,3 +125,32 @@
 @layer utilities {
   .text-balance { text-wrap: balance; }
 }
+
+/* ── Critical layout overrides — not dependent on Tailwind JIT ── */
+.portal-layout,
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #FAFBFC;
+}
+
+.portal-sidebar,
+.admin-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-right: 1px solid rgba(0,0,0,0.08);
+}
+
+.portal-main,
+.admin-main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}

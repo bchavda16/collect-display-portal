@@ -9,11 +9,9 @@ export default async function PortalLayout({ children }: { children: React.React
   if ((session.user as any).role === "ADMIN") redirect("/admin/dashboard")
 
   return (
-    <div className="flex h-screen bg-bg-surface overflow-hidden">
+    <div className="portal-layout">
       <PortalSidebar />
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto scrollbar-none">{children}</div>
-      </main>
+      <main className="portal-main">{children}</main>
       <BasketDrawer />
     </div>
   )
