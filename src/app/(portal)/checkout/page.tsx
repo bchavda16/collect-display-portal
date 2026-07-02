@@ -80,7 +80,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!basket || basket.itemCount === 0) {
+  if (!basket || basket.items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-6">
         <ShoppingCart className="w-8 h-8 text-text-disabled" />
@@ -151,7 +151,7 @@ export default function CheckoutPage() {
         {/* Order summary */}
         <div className="card p-5 flex flex-col gap-4 h-fit">
           <h2 className="text-sm font-semibold">
-            Summary ({basket.itemCount} {basket.itemCount === 1 ? "line" : "lines"})
+            Summary ({basket.items.length} {basket.items.length === 1 ? "line" : "lines"})
           </h2>
 
           <div className="flex flex-col gap-2">
