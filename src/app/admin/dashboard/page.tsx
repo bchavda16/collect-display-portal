@@ -48,7 +48,7 @@ export default async function AdminDashboardPage() {
       take: 10,
       orderBy: { createdAt: "desc" },
       include: {
-        retailer: { select: { companyName: true, accountCode: true } },
+        retailer: { select: { businessName: true, accountCode: true } },
         _count: { select: { items: true } },
       },
     }),
