@@ -136,7 +136,7 @@ export default function CheckoutPage() {
             loading={isSubmitting}
             className="w-full"
           >
-            Place Order · {formatCurrencyFromPounds(basket.totalPence)}
+            Place Order
           </Button>
 
           <p className="text-xs text-text-muted text-center">
@@ -182,7 +182,6 @@ export default function CheckoutPage() {
               <span>{formatCurrencyFromPounds(basket.totalPence)}</span>
             </div>
             <p className="text-[10px] text-text-muted">
-              {basket.totalUnits} units · {basket.totalCDUs} CDUs
             </p>
           </div>
         </div>
