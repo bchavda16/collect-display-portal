@@ -1,3 +1,4 @@
+import { auth } from "@/lib/auth"
 import { notFound } from "next/navigation";
 
 
