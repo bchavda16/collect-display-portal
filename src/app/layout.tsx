@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="bg-bg-base text-text-primary antialiased">
-        <Providers>{children}</Providers>
+        <Providers><style dangerouslySetInnerHTML={{__html: ``}} />{children}</Providers>
       </body>
     </html>
   );
