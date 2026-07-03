@@ -1,158 +1,58 @@
-"use client";
+"use client"
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { formatCurrencyFromPounds, formatDate } from "@/lib/utils"
+import Link from "next/link"
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { ClipboardList, ChevronRight, Search } from "lucide-react";
-import { OrderStatusBadge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Input";
-import { formatCurrency, formatDate, buildQueryString } from "@/lib/utils";
-import type { ApiResponse, PaginatedResponse } from "@/types";
+const STATUSES = ["ALL","PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED"]
+const statusBadge: Record<string,string> = { PLACED:"badge-teal",CONFIRMED:"badge-teal",PROCESSING:"badge-purple",PICKED:"badge-purple",PACKED:"badge-amber",DISPATCHED:"badge-green",OUT_FOR_DELIVERY:"badge-green",DELIVERED:"badge-grey",CANCELLED:"badge-red" }
 
 export default function OrdersPage() {
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
-
+  const [status, setStatus] = useState("ALL")
+  const [page, setPage] = useState(1)
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", page, status],
+    queryKey: ["orders", status, page],
     queryFn: async () => {
-      const qs = buildQueryString({ page, limit: 20, status: status || undefined });
-      const res = await fetch(`/api/orders${qs}`);
-      const json: ApiResponse<PaginatedResponse<Order>> = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data!;
+      const p = new URLSearchParams({ page: String(page), limit: "20", ...(status !== "ALL" && { status }) })
+      const r = await fetch("/api/orders?"+p); return r.json()
     },
-  });
-
-  const STATUS_OPTIONS = [
-    { value: "", label: "All" },
-    { value: "PLACED", label: "Placed" },
-    { value: "CONFIRMED", label: "Confirmed" },
-    { value: "DISPATCHED", label: "Dispatched" },
-    { value: "DELIVERED", label: "Delivered" },
-    { value: "CANCELLED", label: "Cancelled" },
-  ];
-
+  })
+  const orders = data?.data ?? []
+  const totalPages = data?.totalPages ?? 1
   return (
-    <div className="p-6 max-w-4xl flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">My Orders</h1>
-        <p className="text-sm text-text-muted mt-0.5">
-          {data ? `${data.total} orders` : "Loading…"}
-        </p>
+    <div className="p-page">
+      <div className="mb24"><h1 className="page-title">My Orders</h1><p className="page-sub">{data?.total ?? 0} orders total</p></div>
+      <div className="chip-row">
+        {STATUSES.map(s => <button key={s} className={"chip"+(status===s?" chip-active":"")} onClick={()=>{setStatus(s);setPage(1)}}>{s==="ALL"?"All":s.replace(/_/g," ")}</button>)}
       </div>
-
-      {/* Status filter */}
-      <div className="flex gap-2 flex-wrap">
-        {STATUS_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => { setStatus(opt.value); setPage(1); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-              status === opt.value
-                ? "bg-brand/15 border-brand/40 text-brand"
-                : "bg-bg-elevated border-border text-text-secondary hover:border-border-strong"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Orders table */}
-      <div className="card overflow-hidden">
-        {isLoading ? (
-          <div className="flex flex-col divide-y divide-border">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="px-5 py-4 flex items-center justify-between animate-pulse">
-                <div className="flex flex-col gap-1.5">
-                  <div className="h-3 w-24 bg-bg-elevated rounded" />
-                  <div className="h-2.5 w-32 bg-bg-elevated rounded" />
-                </div>
-                <div className="h-5 w-20 bg-bg-elevated rounded" />
-              </div>
+      <div className="card card-table">
+        <table className="tbl">
+          <thead><tr><th>Order</th><th>Date</th><th>PO Ref</th><th>Lines</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            {isLoading ? <tr><td colSpan={6} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>Loading…</td></tr>
+            : orders.length===0 ? <tr><td colSpan={6} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No orders found</td></tr>
+            : orders.map((o: any) => (
+              <tr key={o.id}>
+                <td><Link href={"/orders/"+o.id} style={{color:"#C4638A",fontWeight:600,textDecoration:"none"}}>{o.orderNumber}</Link></td>
+                <td className="txt-muted">{formatDate(o.createdAt)}</td>
+                <td style={{fontFamily:"monospace",fontSize:12,color:"#8888AA"}}>{o.poReference??"-"}</td>
+                <td className="txt-secondary">{o.items?.length??0}</td>
+                <td className="fw600">{formatCurrencyFromPounds(o.totalPence)}</td>
+                <td><span className={"badge "+(statusBadge[o.status]??"badge-grey")}>{o.status.replace(/_/g," ")}</span></td>
+              </tr>
             ))}
-          </div>
-        ) : !data?.data.length ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-            <ClipboardList className="w-8 h-8 text-text-disabled" />
-            <div>
-              <p className="text-sm font-medium text-text-primary">No orders found</p>
-              <p className="text-xs text-text-muted mt-1">
-                {status ? "Try a different filter" : "Your orders will appear here"}
-              </p>
+          </tbody>
+        </table>
+        {totalPages > 1 && (
+          <div className="pagination">
+            <span className="txt-muted fs13">Page {page} of {totalPages}</span>
+            <div className="row" style={{gap:8}}>
+              <button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button>
+              <button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button>
             </div>
-            <Link href="/stock" className="text-xs text-brand hover:underline">
-              Browse stock →
-            </Link>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {data.data.map((order: Order) => (
-              <Link
-                key={order.id}
-                href={`/orders/${order.id}`}
-                className="flex items-center justify-between px-5 py-4 hover:bg-bg-elevated transition-colors group"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-text-primary">
-                      {order.orderNumber}
-                    </span>
-                    {order.poReference && (
-                      <span className="text-xs text-text-muted">PO: {order.poReference}</span>
-                    )}
-                  </div>
-                  <span className="text-xs text-text-muted">
-                    {formatDate(order.createdAt)} · {order.items?.length ?? 0} lines
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <OrderStatusBadge status={order.status as never} />
-                  <span className="text-sm font-semibold text-text-primary min-w-[70px] text-right">
-                    {formatCurrency(order.totalPence)}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-brand transition-colors" />
-                </div>
-              </Link>
-            ))}
           </div>
         )}
       </div>
-
-      {/* Pagination */}
-      {data && data.totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          <button
-            disabled={page === 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-4 py-1.5 text-xs rounded-lg bg-bg-elevated border border-border text-text-secondary hover:border-border-strong disabled:opacity-40 disabled:pointer-events-none"
-          >
-            Previous
-          </button>
-          <span className="flex items-center text-xs text-text-muted px-2">
-            {page} / {data.totalPages}
-          </span>
-          <button
-            disabled={page === data.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-4 py-1.5 text-xs rounded-lg bg-bg-elevated border border-border text-text-secondary hover:border-border-strong disabled:opacity-40 disabled:pointer-events-none"
-          >
-            Next
-          </button>
-        </div>
-      )}
     </div>
-  );
-}
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  poReference?: string | null;
-  status: string;
-  totalPence: number;
-  createdAt: string;
-  items?: { id: string }[];
+  )
 }

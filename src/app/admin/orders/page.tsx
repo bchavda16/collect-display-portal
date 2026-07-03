@@ -1,175 +1,78 @@
-'use client'
+"use client"
+import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { formatCurrencyFromPounds, formatDate } from "@/lib/utils"
 
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, X } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Badge, OrderStatusBadge } from '@/components/ui/Badge'
-import { toast } from '@/components/ui/Toaster'
-import { useDebounce } from '@/hooks/useDebounce'
-import { formatCurrencyFromPounds, formatDate } from '@/lib/utils'
-
-const STATUSES = ['ALL','PLACED','CONFIRMED','PROCESSING','PICKED','PACKED','DISPATCHED','OUT_FOR_DELIVERY','DELIVERED','CANCELLED']
+const STATUSES = ["ALL","PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED"]
+const statusBadge: Record<string,string> = { PLACED:"badge-teal",CONFIRMED:"badge-teal",PROCESSING:"badge-purple",PICKED:"badge-purple",PACKED:"badge-amber",DISPATCHED:"badge-green",OUT_FOR_DELIVERY:"badge-green",DELIVERED:"badge-grey",CANCELLED:"badge-red" }
 
 export default function AdminOrdersPage() {
-  const queryClient = useQueryClient()
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const qc = useQueryClient()
+  const [status, setStatus] = useState("ALL")
   const [page, setPage] = useState(1)
-  const [editingOrder, setEditingOrder] = useState<any>(null)
-  const [newStatus, setNewStatus] = useState('')
-  const [trackingNumber, setTrackingNumber] = useState('')
-  const [carrierName, setCarrierName] = useState('')
-  const [note, setNote] = useState('')
-
-  const debouncedSearch = useDebounce(search, 300)
-
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: '20',
-    ...(statusFilter !== 'ALL' && { status: statusFilter }),
-  })
+  const [editing, setEditing] = useState<any>(null)
+  const [newStatus, setNewStatus] = useState("")
+  const [tracking, setTracking] = useState("")
+  const [carrier, setCarrier] = useState("")
+  const [note, setNote] = useState("")
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-orders', statusFilter, page],
+    queryKey: ["admin-orders", status, page],
     queryFn: async () => {
-      const res = await fetch(`/api/orders?${params}`)
-      if (!res.ok) throw new Error('Failed')
-      return res.json()
+      const p = new URLSearchParams({ page: String(page), limit: "20", ...(status!=="ALL"&&{status}) })
+      const r = await fetch("/api/orders?"+p); return r.json()
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...body }: any) => {
-      const res = await fetch(`/api/orders/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) throw new Error('Failed')
-      return res.json()
+      const r = await fetch("/api/orders/"+id, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
+      return r.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
-      setEditingOrder(null)
-      toast('Order updated', 'success')
-    },
-    onError: () => toast('Update failed', 'error'),
+    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-orders"]}); setEditing(null) },
   })
 
   const orders = data?.data ?? []
-  const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
 
-  const handleUpdate = () => {
-    if (!editingOrder || !newStatus) return
-    updateMutation.mutate({
-      id: editingOrder.id,
-      status: newStatus,
-      trackingNumber: trackingNumber || undefined,
-      carrierName: carrierName || undefined,
-      note: note || undefined,
-    })
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Orders</h1>
-          <p className="text-sm text-text-muted mt-0.5">{total.toLocaleString()} total</p>
-        </div>
+    <div className="p-page">
+      <div className="row-between mb24"><div><h1 className="page-title">Orders</h1><p className="page-sub">{data?.total??0} total</p></div></div>
+      <div className="chip-row">
+        {STATUSES.map(s=><button key={s} className={"chip"+(status===s?" chip-active":"")} onClick={()=>{setStatus(s);setPage(1)}}>{s==="ALL"?"All":s.replace(/_/g," ")}</button>)}
       </div>
-
-      <div className="card p-4 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Search by order number or retailer…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
-            className="w-full bg-white border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-          />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {STATUSES.map(s => (
-            <button key={s} onClick={() => { setStatusFilter(s); setPage(1) }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === s ? 'bg-brand text-white' : 'bg-bg-elevated text-text-secondary hover:bg-brand-light hover:text-brand-dark'}`}>
-              {s === 'ALL' ? 'All' : s.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-bg-elevated border-b border-border">
-                {['Order', 'Retailer', 'Date', 'Items', 'Value', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-4 py-3">{h}</th>
-                ))}
+      <div className="card card-table">
+        <table className="tbl">
+          <thead><tr><th>Order</th><th>Retailer</th><th>Date</th><th>Items</th><th>Value</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            {isLoading ? <tr><td colSpan={7} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>Loading…</td></tr>
+            : orders.length===0 ? <tr><td colSpan={7} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No orders found</td></tr>
+            : orders.map((o: any) => (
+              <tr key={o.id}>
+                <td className="fw600 txt-pink">{o.orderNumber}</td>
+                <td className="txt-secondary">{o.retailer?.businessName}</td>
+                <td className="txt-muted">{formatDate(o.createdAt)}</td>
+                <td className="txt-secondary">{o._count?.items??o.items?.length??0}</td>
+                <td className="fw600">{formatCurrencyFromPounds(o.totalPence)}</td>
+                <td><span className={"badge "+(statusBadge[o.status]??"badge-grey")}>{o.status.replace(/_/g," ")}</span></td>
+                <td><button className="btn-ghost btn-sm" onClick={()=>{setEditing(o);setNewStatus(o.status);setTracking(o.trackingNumber??"");setCarrier(o.carrierName??"");setNote("")}}>Update</button></td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3"><div className="h-4 bg-bg-elevated rounded animate-pulse" /></td>
-                  ))}</tr>
-                ))
-              ) : orders.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-text-muted text-sm">No orders found</td></tr>
-              ) : orders.map((order: any) => (
-                <tr key={order.id} className="hover:bg-bg-elevated/50 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-sm text-brand-dark">{order.orderNumber}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{order.retailer?.businessName}</td>
-                  <td className="px-4 py-3 text-sm text-text-muted">{formatDate(order.createdAt)}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{order._count?.items ?? order.items?.length ?? 0}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-text-primary">{formatCurrencyFromPounds(order.totalPence)}</td>
-                  <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => { setEditingOrder(order); setNewStatus(order.status); setTrackingNumber(order.trackingNumber ?? ''); setCarrierName(order.carrierName ?? ''); setNote('') }}
-                      className="text-xs text-brand hover:text-brand-hover font-medium">Update</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-            <p className="text-sm text-text-muted">Page {page} of {totalPages}</p>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</Button>
-              <Button variant="ghost" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
-            </div>
-          </div>
-        )}
+            ))}
+          </tbody>
+        </table>
+        {totalPages>1 && <div className="pagination"><span className="txt-muted fs13">Page {page} of {totalPages}</span><div className="row" style={{gap:8}}><button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button><button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button></div></div>}
       </div>
-
-      {editingOrder && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="card w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-text-primary">Update {editingOrder.orderNumber}</h2>
-              <button onClick={() => setEditingOrder(null)} className="text-text-muted hover:text-text-primary"><X className="w-5 h-5" /></button>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1.5">Status</label>
-              <select value={newStatus} onChange={e => setNewStatus(e.target.value)}
-                className="w-full bg-white border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand">
-                {STATUSES.filter(s => s !== 'ALL').map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
-              </select>
-            </div>
-            <Input label="Carrier" value={carrierName} onChange={e => setCarrierName(e.target.value)} placeholder="e.g. Royal Mail" />
-            <Input label="Tracking Number" value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="e.g. RM123456789GB" />
-            <Input label="Internal Note (optional)" value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note…" />
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => setEditingOrder(null)} className="flex-1">Cancel</Button>
-              <Button onClick={handleUpdate} loading={updateMutation.isPending} className="flex-1">Save Changes</Button>
+      {editing && (
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setEditing(null)}>
+          <div className="modal">
+            <div className="modal-title">{editing.orderNumber} <button onClick={()=>setEditing(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#8888AA"}}>×</button></div>
+            <div className="form-row"><label className="input-label">Status</label><select className="select" value={newStatus} onChange={e=>setNewStatus(e.target.value)}>{STATUSES.filter(s=>s!=="ALL").map(s=><option key={s} value={s}>{s.replace(/_/g," ")}</option>)}</select></div>
+            <div className="form-row"><label className="input-label">Carrier</label><input className="input" value={carrier} onChange={e=>setCarrier(e.target.value)} placeholder="e.g. Royal Mail" /></div>
+            <div className="form-row"><label className="input-label">Tracking number</label><input className="input" value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="e.g. RM123456789GB" /></div>
+            <div className="form-row"><label className="input-label">Note (optional)</label><input className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="Internal note…" /></div>
+            <div className="row" style={{gap:8,marginTop:20}}>
+              <button className="btn-ghost" style={{flex:1}} onClick={()=>setEditing(null)}>Cancel</button>
+              <button className="btn-pink" style={{flex:1}} onClick={()=>updateMutation.mutate({id:editing.id,status:newStatus,trackingNumber:tracking||undefined,carrierName:carrier||undefined,note:note||undefined})} disabled={updateMutation.isPending}>{updateMutation.isPending?"Saving…":"Save Changes"}</button>
             </div>
           </div>
         </div>

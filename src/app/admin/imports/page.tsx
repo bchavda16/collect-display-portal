@@ -1,249 +1,92 @@
-"use client";
-
-import { useState, useRef } from "react";
-import { Upload, FileText, CheckCircle, AlertTriangle, X } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { toast } from "@/components/ui/Toaster";
-import { cn } from "@/lib/utils";
-import type { ApiResponse, BulkImportPreview } from "@/types";
+"use client"
+import { useState, useRef } from "react"
 
 export default function AdminImportsPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<BulkImportPreview | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{
-    processed: number;
-    failed: number;
-    importId: string;
-  } | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false)
+  const [file, setFile] = useState<File|null>(null)
+  const [preview, setPreview] = useState<any>(null)
+  const [importing, setImporting] = useState(false)
+  const [result, setResult] = useState<any>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  async function handleFile(f: File) {
-    setFile(f);
-    setPreview(null);
-    setResult(null);
-
-    const fd = new FormData();
-    fd.append("file", f);
-    fd.append("mode", "preview");
-
-    const res = await fetch("/api/imports", { method: "POST", body: fd });
-    const json: ApiResponse<BulkImportPreview> = await res.json();
-
-    if (!json.success || !json.data) {
-      toast({ type: "error", title: "Preview failed", description: json.error });
-      return;
-    }
-
-    setPreview(json.data);
+  const parseCSV = (text: string) => {
+    const lines = text.trim().split("\n")
+    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/ /g,"_"))
+    return lines.slice(1).map((line, i) => {
+      const vals = line.split(",")
+      const row: any = { _rowNum: i + 2 }
+      headers.forEach((h, j) => { row[h] = vals[j]?.trim() ?? "" })
+      return row
+    })
   }
 
-  async function handleImport() {
-    if (!file) return;
-    setImporting(true);
+  const handleFile = async (f: File) => {
+    setFile(f); setResult(null)
+    const text = await f.text()
+    const rows = parseCSV(text)
+    const r = await fetch("/api/imports", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({rows, preview: true}) })
+    setPreview({ ...(await r.json()), rows, text })
+  }
 
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("mode", "import");
-
-    const res = await fetch("/api/imports", { method: "POST", body: fd });
-    const json: ApiResponse<{ processed: number; failed: number; importId: string }> =
-      await res.json();
-
-    setImporting(false);
-
-    if (!json.success || !json.data) {
-      toast({ type: "error", title: "Import failed", description: json.error });
-      return;
-    }
-
-    setResult(json.data);
-    setPreview(null);
-    toast({
-      type: "success",
-      title: "Import complete",
-      description: `${json.data.processed} products imported`,
-    });
+  const handleImport = async () => {
+    if (!preview) return
+    setImporting(true)
+    const r = await fetch("/api/imports", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({rows: preview.rows, preview: false}) })
+    setResult(await r.json())
+    setImporting(false)
+    setPreview(null)
+    setFile(null)
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6 max-w-3xl">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">Bulk Import</h1>
-        <p className="text-sm text-text-muted mt-0.5">
-          Upload a CSV to add or update products in bulk
-        </p>
-      </div>
-
-      {/* CSV format guide */}
-      <div className="card p-4">
-        <h2 className="text-sm font-semibold mb-2">Required CSV Columns</h2>
-        <div className="overflow-x-auto">
-          <table className="text-xs w-full">
-            <thead>
-              <tr className="border-b border-border">
-                {["Column", "Example", "Notes"].map((h) => (
-                  <th key={h} className="px-3 py-2 text-left text-text-muted font-medium">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {[
-                ["sku", "PMD-001", "Unique identifier"],
-                ["name", "Dimoo Space Travel Series", "Product name"],
-                ["brand", "Pop Mart", "Brand name (auto-created)"],
-                ["type", "BLIND_BOX", "BLIND_BOX, VINYL_FIGURE, PLUSH, ACCESSORIES"],
-                ["unitcost", "4.50", "Ex-VAT unit cost in £"],
-                ["rrp", "12.99", "Recommended retail price in £"],
-                ["cdusize", "12", "Units per CDU"],
-                ["stock", "144", "Current stock in units"],
-              ].map(([col, ex, note]) => (
-                <tr key={col}>
-                  <td className="px-3 py-2 font-mono text-brand">{col}</td>
-                  <td className="px-3 py-2 text-text-secondary">{ex}</td>
-                  <td className="px-3 py-2 text-text-muted">{note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Drop zone */}
+    <div className="p-page">
+      <div className="mb24"><h1 className="page-title">Import Products</h1><p className="page-sub">Upload a CSV to add or update products in bulk</p></div>
       {!preview && !result && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            const f = e.dataTransfer.files[0];
-            if (f) handleFile(f);
-          }}
-          onClick={() => fileRef.current?.click()}
-          className={cn(
-            "border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all",
-            dragging
-              ? "border-brand bg-brand/5"
-              : "border-border hover:border-border-strong hover:bg-bg-elevated"
-          )}
-        >
-          <Upload className={cn("w-8 h-8", dragging ? "text-brand" : "text-text-muted")} />
-          <div className="text-center">
-            <p className="text-sm font-medium text-text-primary">
-              {dragging ? "Drop to upload" : "Drop CSV file here"}
-            </p>
-            <p className="text-xs text-text-muted mt-0.5">or click to browse</p>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-            }}
-          />
+        <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);const f=e.dataTransfer.files[0];if(f)handleFile(f)}}
+          style={{border:"2px dashed",borderColor:dragging?"#F0A3BC":"rgba(0,0,0,0.15)",borderRadius:16,padding:"48px 24px",textAlign:"center",cursor:"pointer",background:dragging?"#FDE8EF":"#FAFBFC",transition:"all 0.15s"}}
+          onClick={()=>inputRef.current?.click()}>
+          <div style={{fontSize:40,marginBottom:12}}>📄</div>
+          <p className="fw600 txt-primary">Drop your CSV here or click to upload</p>
+          <p className="txt-muted fs13">Required columns: sku, name, brand, unit_cost, cdu_size, rrp</p>
+          <input ref={inputRef} type="file" accept=".csv" style={{display:"none"}} onChange={e=>e.target.files?.[0]&&handleFile(e.target.files[0])} />
         </div>
       )}
-
-      {/* Preview */}
       {preview && (
-        <div className="flex flex-col gap-4">
-          <div className="card p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-text-muted" />
-                <span className="text-sm font-medium text-text-primary">{file?.name}</span>
-              </div>
-              <button
-                onClick={() => { setFile(null); setPreview(null); }}
-                className="text-text-muted hover:text-text-primary"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div>
+          <div className="card card-pad mb16">
+            <h2 className="fw600 txt-primary mb8">Preview: {file?.name}</h2>
+            <div className="row" style={{gap:16,marginBottom:16}}>
+              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:700,color:"#0EA572",margin:0}}>{preview.valid}</p><p className="txt-muted fs12">Valid rows</p></div>
+              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:700,color:"#E11D48",margin:0}}>{preview.invalid}</p><p className="txt-muted fs12">Invalid rows</p></div>
             </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-bg-elevated rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-text-primary">{preview.totalRows}</p>
-                <p className="text-xs text-text-muted">Total rows</p>
-              </div>
-              <div className="bg-emerald/10 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-emerald">{preview.validRows}</p>
-                <p className="text-xs text-text-muted">Valid</p>
-              </div>
-              <div className={cn("rounded-lg p-3 text-center", preview.invalidRows > 0 ? "bg-rose/10" : "bg-bg-elevated")}>
-                <p className={cn("text-lg font-bold", preview.invalidRows > 0 ? "text-rose" : "text-text-muted")}>
-                  {preview.invalidRows}
-                </p>
-                <p className="text-xs text-text-muted">Errors</p>
-              </div>
-            </div>
-
-            {preview.errors.length > 0 && (
-              <div className="bg-rose/5 border border-rose/20 rounded-lg p-3 flex flex-col gap-1">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose" />
-                  <span className="text-xs font-medium text-rose">Row errors</span>
-                </div>
-                {preview.errors.slice(0, 5).map((err) => (
-                  <p key={err.row} className="text-xs text-text-secondary">
-                    Row {err.row}: {err.message}
-                  </p>
-                ))}
-                {preview.errors.length > 5 && (
-                  <p className="text-xs text-text-muted">
-                    +{preview.errors.length - 5} more errors
-                  </p>
-                )}
+            {preview.errors?.length > 0 && (
+              <div style={{background:"#FFF1F4",border:"1px solid rgba(225,29,72,0.2)",borderRadius:8,padding:12,marginBottom:16}}>
+                {preview.errors.map((e: string, i: number) => <p key={i} style={{fontSize:12,color:"#E11D48",margin:"2px 0"}}>{e}</p>)}
               </div>
             )}
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => { setFile(null); setPreview(null); }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleImport}
-              loading={importing}
-              disabled={preview.validRows === 0}
-            >
-              Import {preview.validRows} Products
-            </Button>
+            <div className="row" style={{gap:8}}>
+              <button className="btn-ghost" style={{flex:1}} onClick={()=>{setPreview(null);setFile(null)}}>Cancel</button>
+              <button className="btn-pink" style={{flex:1}} onClick={handleImport} disabled={importing||preview.valid===0}>{importing?"Importing…":"Import "+preview.valid+" products"}</button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Success result */}
       {result && (
-        <div className="card p-6 flex flex-col items-center gap-4 text-center">
-          <div className="w-14 h-14 rounded-full bg-emerald/15 flex items-center justify-center">
-            <CheckCircle className="w-7 h-7 text-emerald" />
+        <div className="card card-pad">
+          <div style={{textAlign:"center",padding:"24px 0"}}>
+            <div style={{fontSize:48,marginBottom:12}}>✅</div>
+            <h2 className="fw700 txt-primary">Import complete!</h2>
+            <p className="txt-muted">{result.imported} products imported successfully</p>
+            <button className="btn-pink" style={{marginTop:16}} onClick={()=>setResult(null)}>Import another file</button>
           </div>
-          <div>
-            <p className="text-base font-semibold text-text-primary">Import complete</p>
-            <p className="text-sm text-text-muted mt-1">
-              {result.processed} products imported successfully
-              {result.failed > 0 && `, ${result.failed} failed`}
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            onClick={() => { setFile(null); setResult(null); }}
-          >
-            Import another file
-          </Button>
         </div>
       )}
+      <div className="card card-pad" style={{marginTop:24}}>
+        <h3 className="fw600 txt-primary mb8">CSV Format</h3>
+        <p className="txt-muted fs13 mb8">Your CSV file should have these column headers in the first row:</p>
+        <code style={{display:"block",background:"#F4F5F7",padding:"10px 14px",borderRadius:8,fontSize:12,color:"#4A4A6A"}}>sku, name, brand, type, unit_cost, cdu_size, rrp, stock, description</code>
+        <p className="txt-muted fs12" style={{marginTop:8}}>Example: PM-LBB-001, Labubu Series 1, POP MART, BLIND_BOX, 8.50, 6, 14.99, 100</p>
+      </div>
     </div>
-  );
+  )
 }

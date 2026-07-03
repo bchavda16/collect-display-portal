@@ -1,246 +1,116 @@
-"use client";
+"use client"
+import { useState, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { formatCurrencyFromPounds } from "@/lib/utils"
 
-import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, SlidersHorizontal, Package } from "lucide-react";
-import { ProductCard } from "@/components/portal/ProductCard";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { cn, buildQueryString } from "@/lib/utils";
-import type { ApiResponse, PaginatedResponse, ProductWithBrand } from "@/types";
-import { useDebounce } from "@/hooks/useDebounce";
-
-const BRAND_FILTERS = [
-  { value: "", label: "All Brands" },
-  { value: "pop-mart", label: "Pop Mart" },
-  { value: "mighty-jaxx", label: "Mighty Jaxx" },
-  { value: "funko", label: "Funko" },
-];
-
-const TYPE_FILTERS = [
-  { value: "", label: "All Types" },
-  { value: "BLIND_BOX", label: "Blind Box" },
-  { value: "VINYL_FIGURE", label: "Vinyl Figure" },
-  { value: "PLUSH", label: "Plush" },
-  { value: "ACCESSORIES", label: "Accessories" },
-];
+const TYPES = ["ALL","BLIND_BOX","FIGURE","PLUSH","ACCESSORY","BUNDLE"]
 
 export default function StockPage() {
-  const [search, setSearch] = useState("");
-  const [brandId, setBrandId] = useState("");
-  const [type, setType] = useState("");
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [page, setPage] = useState(1);
+  const qc = useQueryClient()
+  const [search, setSearch] = useState("")
+  const [type, setType] = useState("ALL")
+  const [inStock, setInStock] = useState(false)
+  const [page, setPage] = useState(1)
+  const [added, setAdded] = useState<string|null>(null)
+  const [qtys, setQtys] = useState<Record<string,number>>({})
 
-  const debouncedSearch = useDebounce(search, 300);
-
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["products", debouncedSearch, brandId, type, inStockOnly, page],
+  const { data, isLoading } = useQuery({
+    queryKey: ["products", search, type, inStock, page],
     queryFn: async () => {
-      const qs = buildQueryString({
-        search: debouncedSearch || undefined,
-        brandId: brandId || undefined,
-        type: type || undefined,
-        inStock: inStockOnly || undefined,
-        page,
-        limit: 24,
-      });
-      const res = await fetch(`/api/products${qs}`);
-      const json: ApiResponse<PaginatedResponse<ProductWithBrand>> = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data!;
+      const p = new URLSearchParams({ page: String(page), limit: "12", ...(search && {search}), ...(type!=="ALL"&&{type}), ...(inStock&&{inStock:"true"}) })
+      const r = await fetch("/api/products?"+p); return r.json()
     },
-  });
+  })
 
-  const resetFilters = useCallback(() => {
-    setSearch("");
-    setBrandId("");
-    setType("");
-    setInStockOnly(false);
-    setPage(1);
-  }, []);
+  const addMutation = useMutation({
+    mutationFn: async ({ productId, quantity }: any) => {
+      const r = await fetch("/api/basket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({productId, quantity}) })
+      return r.json()
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["basket"] })
+      setAdded(vars.productId)
+      setTimeout(() => setAdded(null), 1800)
+    },
+  })
 
-  const hasFilters = search || brandId || type || inStockOnly;
+  const products = data?.data ?? []
+  const totalPages = data?.totalPages ?? 1
+
+  const getQty = (p: any) => qtys[p.id] ?? p.cduSize
+  const setQty = (id: string, v: number) => setQtys(q => ({...q, [id]: v}))
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border bg-bg-surface sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-lg font-semibold text-text-primary">Live Stock</h1>
-            <p className="text-xs text-text-muted mt-0.5">
-              {data ? `${data.total} products` : "Loading…"}
-              {inStockOnly && " · In stock only"}
-            </p>
-          </div>
-          {hasFilters && (
-            <button
-              onClick={resetFilters}
-              className="text-xs text-text-muted hover:text-brand transition-colors"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        <div className="flex gap-3 flex-wrap">
-          {/* Search */}
-          <div className="flex-1 min-w-48">
-            <Input
-              placeholder="Search products, SKUs…"
-              leftIcon={<Search className="w-4 h-4" />}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
-
-          {/* Filter chips */}
-          <div className="flex gap-2 flex-wrap">
-            {TYPE_FILTERS.map((f) => (
-              <FilterChip
-                key={f.value}
-                active={type === f.value}
-                onClick={() => { setType(f.value); setPage(1); }}
-              >
-                {f.label}
-              </FilterChip>
-            ))}
-            <FilterChip
-              active={inStockOnly}
-              onClick={() => { setInStockOnly((v) => !v); setPage(1); }}
-              highlight
-            >
-              In Stock
-            </FilterChip>
-          </div>
-        </div>
+    <div className="p-page">
+      <div className="mb24"><h1 className="page-title">Live Stock</h1><p className="page-sub">{data?.total ?? 0} products available</p></div>
+      <div className="search-box mb8">
+        <span style={{color:"#8888AA"}}>🔍</span>
+        <input placeholder="Search by name, SKU or brand…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} />
       </div>
-
-      {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : !data || data.data.length === 0 ? (
-          <EmptyState hasFilters={!!hasFilters} onReset={resetFilters} />
-        ) : (
-          <>
-            <div
-              className={cn(
-                "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 transition-opacity",
-                isFetching && "opacity-60"
-              )}
-            >
-              {data.data.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {data.totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <span className="flex items-center text-xs text-text-muted px-3">
-                  Page {page} of {data.totalPages}
-                </span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={page === data.totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
+      <div className="chip-row">
+        {TYPES.map(t => <button key={t} className={"chip"+(type===t?" chip-active":"")} onClick={()=>{setType(t);setPage(1)}}>{t==="ALL"?"All Types":t.replace(/_/g," ")}</button>)}
+        <button className={"chip"+(inStock?" chip-active":"")} style={{marginLeft:"auto"}} onClick={()=>{setInStock(v=>!v);setPage(1)}}>In stock only</button>
+      </div>
+      {isLoading ? (
+        <div style={{textAlign:"center",padding:"48px",color:"#8888AA"}}>Loading products…</div>
+      ) : products.length === 0 ? (
+        <div className="empty-state"><div className="empty-icon">📦</div><p className="fw600 txt-primary">No products found</p><p className="txt-muted fs13">Try adjusting your filters</p></div>
+      ) : (
+        <div className="grid3 mb16">
+          {products.map((p: any) => {
+            const qty = getQty(p)
+            const cduCost = p.unitCostPence * p.cduSize
+            const isAdded = added === p.id
+            const outOfStock = p.status === "OUT_OF_STOCK" || p.stockUnits === 0
+            const comingSoon = p.status === "COMING_SOON"
+            return (
+              <div key={p.id} className="product-card">
+                <div className="product-img" style={{position:"relative"}}>
+                  <span>🎁</span>
+                  {p.badges?.includes("BEST_SELLER") && <span className="tag-pink" style={{position:"absolute",top:8,left:8}}>Best Seller</span>}
+                  {p.badges?.includes("NEW") && <span className="tag-teal" style={{position:"absolute",top:8,left:8}}>New</span>}
+                  {(outOfStock||comingSoon) && <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,0.75)",display:"flex",alignItems:"center",justifyContent:"center"}}><span className="badge badge-grey">{comingSoon?"Coming Soon":"Out of Stock"}</span></div>}
+                </div>
+                <div className="product-body">
+                  <p style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"#3A9E9B",margin:"0 0 2px"}}>{p.brand?.name}</p>
+                  <p className="fw600 txt-primary mb4" style={{fontSize:13,lineHeight:1.3}}>{p.name}</p>
+                  <p style={{fontSize:10,fontFamily:"monospace",color:"#8888AA",margin:"0 0 8px"}}>{p.sku}</p>
+                  <div className="price-grid">
+                    <div className="price-col"><p className="price-col-label">Unit</p><p className="price-col-val">{formatCurrencyFromPounds(p.unitCostPence)}</p></div>
+                    <div className="price-col"><p className="price-col-label">CDU ×{p.cduSize}</p><p className="price-col-val pink">{formatCurrencyFromPounds(cduCost)}</p></div>
+                    <div className="price-col"><p className="price-col-label">RRP</p><p className="price-col-val muted">{formatCurrencyFromPounds(p.rrpPence)}</p></div>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#8888AA",margin:"6px 0 8px"}}>
+                    <span>Stock</span>
+                    <span style={{color:p.stockUnits===0?"#E11D48":p.stockUnits<=10?"#D97706":"#0EA572",fontWeight:600}}>{p.stockUnits} units</span>
+                  </div>
+                  {!outOfStock && !comingSoon && (
+                    <div style={{display:"flex",gap:6}}>
+                      <div className="stepper">
+                        <button onClick={()=>setQty(p.id, Math.max(p.cduSize, qty-p.cduSize))}>−</button>
+                        <span>{qty}</span>
+                        <button onClick={()=>setQty(p.id, qty+p.cduSize)}>+</button>
+                      </div>
+                      <button className="add-btn" onClick={()=>addMutation.mutate({productId:p.id,quantity:qty})} disabled={addMutation.isPending||isAdded} style={isAdded?{background:"#0EA572"}:{}}>
+                        {isAdded ? "✓ Added" : "🛒 Add"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FilterChip({
-  children,
-  active,
-  onClick,
-  highlight,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-  highlight?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 border",
-        active
-          ? highlight
-            ? "bg-emerald/15 border-emerald/40 text-emerald"
-            : "bg-brand/15 border-brand/40 text-brand"
-          : "bg-bg-elevated border-border text-text-secondary hover:border-border-strong hover:text-text-primary"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function ProductCardSkeleton() {
-  return (
-    <div className="card animate-pulse">
-      <div className="aspect-square bg-bg-elevated rounded-t-lg" />
-      <div className="p-4 flex flex-col gap-3">
-        <div className="space-y-1.5">
-          <div className="h-2.5 bg-bg-elevated rounded w-1/3" />
-          <div className="h-3 bg-bg-elevated rounded w-4/5" />
-          <div className="h-2 bg-bg-elevated rounded w-1/4" />
+            )
+          })}
         </div>
-        <div className="h-10 bg-bg-elevated rounded-lg" />
-        <div className="h-8 bg-bg-elevated rounded-lg" />
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({
-  hasFilters,
-  onReset,
-}: {
-  hasFilters: boolean;
-  onReset: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-bg-elevated flex items-center justify-center">
-        <Package className="w-6 h-6 text-text-muted" />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-text-primary">No products found</p>
-        <p className="text-xs text-text-muted mt-1">
-          {hasFilters
-            ? "Try adjusting your filters"
-            : "No products are available right now"}
-        </p>
-      </div>
-      {hasFilters && (
-        <Button variant="secondary" size="sm" onClick={onReset}>
-          Clear filters
-        </Button>
+      )}
+      {totalPages > 1 && (
+        <div className="row-between mt8">
+          <span className="txt-muted fs13">Page {page} of {totalPages}</span>
+          <div className="row" style={{gap:8}}>
+            <button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button>
+            <button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button>
+          </div>
+        </div>
       )}
     </div>
-  );
+  )
 }
