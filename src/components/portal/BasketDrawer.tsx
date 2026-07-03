@@ -1,22 +1,37 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { X, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
-import { useBasket, useUpdateBasketItem, useClearBasket } from '@/hooks/useBasket'
-import { formatCurrencyFromPounds } from '@/lib/utils'
+"use client"
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { formatCurrencyFromPounds } from "@/lib/utils"
 
 export function BasketDrawer() {
   const [open, setOpen] = useState(false)
-  const { data: basket, isLoading } = useBasket()
-  const updateItem = useUpdateBasketItem()
-  const clearBasket = useClearBasket()
+  const qc = useQueryClient()
 
   useEffect(() => {
     const handler = () => setOpen(true)
-    window.addEventListener('open-basket', handler)
-    return () => window.removeEventListener('open-basket', handler)
+    window.addEventListener("open-basket", handler)
+    return () => window.removeEventListener("open-basket", handler)
   }, [])
+
+  const { data: basket, isLoading } = useQuery({
+    queryKey: ["basket"],
+    queryFn: async () => { const r = await fetch("/api/basket"); return r.json() },
+    enabled: open,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ itemId, quantity }: any) => {
+      const r = await fetch("/api/basket", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({itemId,quantity}) })
+      return r.json()
+    },
+    onSuccess: () => qc.invalidateQueries({queryKey:["basket"]}),
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: async () => { const r = await fetch("/api/basket", {method:"DELETE"}); return r.json() },
+    onSuccess: () => qc.invalidateQueries({queryKey:["basket"]}),
+  })
 
   const items = basket?.items ?? []
   const subtotal = basket?.subtotalPence ?? 0
@@ -27,131 +42,70 @@ export function BasketDrawer() {
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40"
-        onClick={() => setOpen(false)}
-      />
-
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-border z-50 flex flex-col shadow-2xl animate-slide-in-right">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-brand" />
-            <h2 className="font-semibold text-text-primary">
-              Basket
-              {items.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-text-muted">({items.length} line{items.length !== 1 ? 's' : ''})</span>
-              )}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {items.length > 0 && (
-              <button
-                onClick={() => clearBasket.mutate()}
-                className="text-xs text-text-muted hover:text-rose transition-colors flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" />
-                Clear
-              </button>
-            )}
-            <button onClick={() => setOpen(false)} className="text-text-muted hover:text-text-primary transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+    <style>{`
+      .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+      .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08)}
+      .drawer-body{flex:1;overflow-y:auto;padding:16px}
+      .drawer-footer{border-top:1px solid rgba(0,0,0,.08);padding:16px}
+      .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:49}
+      .basket-item{display:flex;gap:12px;padding:12px;background:#FAFBFC;border:1px solid rgba(0,0,0,.07);border-radius:10px;margin-bottom:8px}
+      .stepper{display:flex;align-items:center;border:1px solid rgba(0,0,0,.12);border-radius:6px;overflow:hidden}
+      .stepper button{background:#F4F5F7;border:none;padding:4px 8px;font-size:14px;cursor:pointer;color:#4A4A6A}
+      .stepper span{font-size:12px;font-weight:600;padding:0 6px;color:#1A1A2E;min-width:26px;text-align:center}
+      .checkout-btn{display:block;width:100%;padding:12px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-top:12px}
+      .checkout-btn:hover{background:#E88BAA}
+      .close-btn{background:none;border:none;cursor:pointer;color:#8888AA;font-size:20px;padding:0}
+      .clear-btn{background:none;border:none;cursor:pointer;color:#8888AA;font-size:12px;text-decoration:underline;padding:0}
+      .summary-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+      .summary-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#C4638A;border-top:1px solid rgba(0,0,0,.08);padding-top:10px;margin-top:6px}
+    `}</style>
+    <div className="backdrop" onClick={()=>setOpen(false)} />
+    <div className="drawer">
+      <div className="drawer-header">
+        <div>
+          <span style={{fontWeight:700,fontSize:15,color:"#1A1A2E"}}>🛒 Basket</span>
+          {items.length>0&&<span style={{fontSize:12,color:"#8888AA",marginLeft:8}}>({items.length} line{items.length!==1?"s":""})</span>}
         </div>
-
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="p-5 space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-16 bg-bg-elevated rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-8">
-              <div className="w-16 h-16 rounded-2xl bg-brand-light flex items-center justify-center mb-4">
-                <ShoppingCart className="w-8 h-8 text-brand" />
-              </div>
-              <p className="text-sm font-medium text-text-primary mb-1">Your basket is empty</p>
-              <p className="text-xs text-text-muted">Add items from the Live Stock page</p>
-            </div>
-          ) : (
-            <div className="p-4 space-y-3">
-              {items.map(item => (
-                <div key={item.id} className="flex gap-3 p-3 rounded-xl bg-bg-surface border border-border">
-                  {/* Image */}
-                  <div className="w-12 h-12 rounded-lg bg-bg-elevated border border-border overflow-hidden flex-shrink-0">
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-text-muted/40 text-xs font-bold">
-                        {item.productName[0]}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-text-primary truncate">{item.productName}</p>
-                    <p className="text-[10px] text-text-muted font-mono">{item.sku}</p>
-                    <p className="text-xs text-brand-dark font-semibold mt-0.5">
-                      {formatCurrencyFromPounds(item.lineTotalPence)}
-                    </p>
-                  </div>
-
-                  {/* Qty stepper */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity - item.cduSize })}
-                      className="w-6 h-6 rounded-full bg-bg-elevated hover:bg-border border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
-                    >
-                      <Minus className="w-2.5 h-2.5" />
-                    </button>
-                    <span className="text-xs font-semibold text-text-primary w-6 text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity + item.cduSize })}
-                      className="w-6 h-6 rounded-full bg-bg-elevated hover:bg-border border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
-                    >
-                      <Plus className="w-2.5 h-2.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {items.length>0&&<button className="clear-btn" onClick={()=>clearMutation.mutate()}>Clear all</button>}
+          <button className="close-btn" onClick={()=>setOpen(false)}>×</button>
         </div>
-
-        {/* Totals + Checkout */}
-        {items.length > 0 && (
-          <div className="border-t border-border p-4 space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Subtotal (ex. VAT)</span>
-                <span className="font-medium text-text-primary">{formatCurrencyFromPounds(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-text-muted">VAT (20%)</span>
-                <span className="text-text-muted">{formatCurrencyFromPounds(vat)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold border-t border-border pt-2">
-                <span className="text-text-primary">Total (inc. VAT)</span>
-                <span className="text-brand-dark text-base">{formatCurrencyFromPounds(total)}</span>
-              </div>
-            </div>
-
-            <Link
-              href="/checkout"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-brand hover:bg-brand-hover text-white font-semibold rounded-xl transition-colors shadow-sm"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Proceed to Checkout
-            </Link>
-          </div>
-        )}
       </div>
+      <div className="drawer-body">
+        {isLoading ? <p style={{color:"#8888AA",fontSize:13,textAlign:"center",paddingTop:32}}>Loading…</p>
+        : items.length===0 ? (
+          <div style={{textAlign:"center",paddingTop:48}}>
+            <div style={{fontSize:40,marginBottom:12}}>🛒</div>
+            <p style={{fontWeight:600,color:"#1A1A2E",margin:"0 0 4px"}}>Your basket is empty</p>
+            <p style={{fontSize:13,color:"#8888AA",margin:0}}>Add items from Live Stock</p>
+          </div>
+        ) : items.map((item: any) => (
+          <div key={item.id} className="basket-item">
+            <div style={{width:44,height:44,background:"#F4F5F7",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>🎁</div>
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontSize:12,fontWeight:600,color:"#1A1A2E",margin:"0 0 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</p>
+              <p style={{fontSize:11,color:"#8888AA",fontFamily:"monospace",margin:"0 0 6px"}}>{item.sku}</p>
+              <p style={{fontSize:12,fontWeight:600,color:"#C4638A",margin:0}}>{formatCurrencyFromPounds(item.lineTotalPence)}</p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
+              <div className="stepper">
+                <button onClick={()=>updateMutation.mutate({itemId:item.id,quantity:item.quantity-item.cduSize})}>−</button>
+                <span>{item.quantity}</span>
+                <button onClick={()=>updateMutation.mutate({itemId:item.id,quantity:item.quantity+item.cduSize})}>+</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {items.length>0&&(
+        <div className="drawer-footer">
+          <div className="summary-row"><span style={{color:"#8888AA"}}>Subtotal (ex. VAT)</span><span style={{fontWeight:500}}>{formatCurrencyFromPounds(subtotal)}</span></div>
+          <div className="summary-row"><span style={{color:"#8888AA"}}>VAT (20%)</span><span style={{color:"#8888AA"}}>{formatCurrencyFromPounds(vat)}</span></div>
+          <div className="summary-total"><span>Total (inc. VAT)</span><span>{formatCurrencyFromPounds(total)}</span></div>
+          <Link href="/checkout" className="checkout-btn" onClick={()=>setOpen(false)}>Proceed to Checkout →</Link>
+        </div>
+      )}
+    </div>
     </>
   )
 }

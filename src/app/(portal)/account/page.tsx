@@ -1,439 +1,129 @@
-'use client'
-
-import { useState } from 'react'
-import { useSession } from 'next-auth/react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { User, MapPin, Lock, Building2, Phone, Mail, Hash, Save, Edit2, X, Plus, Eye, EyeOff } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Badge } from '@/components/ui/Badge'
-import { toast } from '@/components/ui/Toaster'
-
-interface AccountData {
-  businessName: string
-  contactName: string
-  email: string
-  phone: string | null
-  vatNumber: string | null
-  pricingTier: string
-  paymentTerms: string
-  creditLimitPence: number | null
-  addresses: Address[]
-}
-
-interface Address {
-  id: string
-  label: string | null
-  line1: string
-  line2: string | null
-  city: string
-  county: string | null
-  postcode: string
-  country: string
-  isDefault: boolean
-}
+"use client"
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 
 export default function AccountPage() {
-  const { data: session } = useSession()
-  const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'details' | 'addresses' | 'security'>('details')
+  const [tab, setTab] = useState("details")
+  const [editing, setEditing] = useState(false)
+  const [contactName, setContactName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [pwForm, setPwForm] = useState({current:"",next:"",confirm:""})
+  const [pwMsg, setPwMsg] = useState("")
 
-  const { data: account, isLoading } = useQuery<AccountData>({
-    queryKey: ['account'],
-    queryFn: async () => {
-      const res = await fetch('/api/account')
-      if (!res.ok) throw new Error('Failed to load account')
-      return res.json()
-    },
+  const { data: account, isLoading, refetch } = useQuery({
+    queryKey: ["account"],
+    queryFn: async () => { const r = await fetch("/api/account"); return r.json() },
   })
 
-  const tabs = [
-    { id: 'details', label: 'Business Details', icon: Building2 },
-    { id: 'addresses', label: 'Addresses', icon: MapPin },
-    { id: 'security', label: 'Security', icon: Lock },
-  ] as const
+  const handleSave = async () => {
+    setSaving(true)
+    await fetch("/api/account", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contactName, phone}) })
+    setSaving(false); setEditing(false); refetch()
+  }
+
+  const handlePw = async () => {
+    if (pwForm.next !== pwForm.confirm) { setPwMsg("Passwords do not match"); return }
+    const r = await fetch("/api/account/password", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({currentPassword:pwForm.current,newPassword:pwForm.next}) })
+    const d = await r.json()
+    setPwMsg(d.success ? "Password updated!" : d.error ?? "Failed")
+    if (d.success) setPwForm({current:"",next:"",confirm:""})
+  }
+
+  const tierBadge: Record<string,string> = { PLATINUM:"badge-purple", GOLD:"badge-amber", SILVER:"badge-teal", STANDARD:"badge-grey" }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">My Account</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Manage your business details and preferences</p>
-      </div>
-
-      {/* Tab nav */}
-      <div className="flex gap-1 border-b border-white/10">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-brand text-white'
-                : 'border-transparent text-gray-400 hover:text-white hover:border-white/20'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
+    <>
+    <style>{`
+      .p-page{padding:24px;font-family:system-ui,sans-serif}
+      .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
+      .page-sub{font-size:13px;color:#8888AA;margin:0 0 24px}
+      .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+      .card-pad{padding:16px}
+      .row{display:flex;align-items:center;gap:12px}
+      .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+      .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+      .mb8{margin-bottom:8px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}.mt16{margin-top:16px}
+      .txt-primary{color:#1A1A2E}.txt-muted{color:#8888AA}.txt-pink{color:#C4638A}
+      .fw600{font-weight:600}.fs12{font-size:12px}.fs13{font-size:13px}
+      .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+      .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer}
+      .btn-sm{padding:5px 10px;font-size:12px}
+      .input{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white}
+      .input:focus{border-color:#F0A3BC}
+      .input-label{display:block;font-size:11px;font-weight:600;color:#4A4A6A;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+      .form-row{margin-bottom:14px}
+      .tab-nav{display:flex;border-bottom:2px solid rgba(0,0,0,.08);margin-bottom:24px}
+      .tab{padding:10px 18px;font-size:13px;font-weight:500;color:#8888AA;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px}
+      .tab.active{color:#F0A3BC;border-bottom-color:#F0A3BC;font-weight:600}
+      .detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:13px}
+      .detail-row:last-child{border-bottom:none}
+      .detail-label{color:#8888AA}
+      .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+      .badge-amber{background:#FEF3C7;color:#D97706}
+      .badge-purple{background:#F3EEFF;color:#7C3AED}
+      .badge-teal{background:#E8F8F7;color:#3A9E9B}
+      .badge-grey{background:#F4F5F7;color:#8888AA}
+    `}</style>
+    <div className="p-page" style={{maxWidth:800}}>
+      <h1 className="page-title">My Account</h1>
+      <p className="page-sub">Manage your business details and preferences</p>
+      <div className="tab-nav">
+        {[["details","Business Details"],["security","Security"]].map(([id,label])=>(
+          <button key={id} className={"tab"+(tab===id?" active":"")} onClick={()=>setTab(id)}>{label}</button>
         ))}
       </div>
-
-      {isLoading ? (
-        <div className="card p-8 flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : !account ? (
-        <div className="card p-8 text-center text-gray-400">Failed to load account details</div>
-      ) : (
-        <>
-          {activeTab === 'details' && <DetailsTab account={account} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['account'] })} />}
-          {activeTab === 'addresses' && <AddressesTab addresses={account.addresses} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['account'] })} />}
-          {activeTab === 'security' && <SecurityTab email={account.email} />}
-        </>
-      )}
-    </div>
-  )
-}
-
-function DetailsTab({ account, onUpdate }: { account: AccountData; onUpdate: () => void }) {
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({
-    contactName: account.contactName,
-    phone: account.phone ?? '',
-  })
-  const [saving, setSaving] = useState(false)
-
-  const f = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(prev => ({ ...prev, [key]: e.target.value }))
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch('/api/account', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactName: form.contactName, phone: form.phone || null }),
-      })
-      if (!res.ok) throw new Error()
-      toast('Details updated', 'success')
-      setEditing(false)
-      onUpdate()
-    } catch {
-      toast('Failed to save', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const tierColour = (tier: string) => {
-    switch (tier) {
-      case 'PLATINUM': return 'purple'
-      case 'GOLD': return 'warning'
-      case 'SILVER': return 'info'
-      default: return 'default'
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Read-only account info */}
-      <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Business</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <InfoRow label="Business Name" value={account.businessName} icon={<Building2 className="w-4 h-4" />} />
-          <InfoRow label="Email" value={account.email} icon={<Mail className="w-4 h-4" />} />
-          {account.vatNumber && <InfoRow label="VAT Number" value={account.vatNumber} icon={<Hash className="w-4 h-4" />} mono />}
-        </div>
-
-        <div className="pt-2 border-t border-white/10 flex gap-6">
+      {isLoading ? <p className="txt-muted fs13">Loading…</p> : !account ? <p className="txt-muted fs13">Failed to load account</p> : tab==="details" ? (
+        <div className="grid2">
           <div>
-            <p className="text-xs text-gray-500 mb-1">Pricing Tier</p>
-            <Badge variant={tierColour(account.pricingTier) as any}>{account.pricingTier}</Badge>
+            <h2 className="fw600 txt-primary mb8" style={{fontSize:14}}>Business</h2>
+            <div className="card card-pad mb16">
+              {[["Business Name",account.businessName],["Email",account.email],["VAT Number",account.vatNumber??"—"]].map(([l,v])=>(
+                <div key={l} className="detail-row"><span className="detail-label">{l}</span><span className="fw600">{v}</span></div>
+              ))}
+              <div className="detail-row"><span className="detail-label">Pricing Tier</span><span className={"badge "+(tierBadge[account.pricingTier]??"badge-grey")}>{account.pricingTier}</span></div>
+              <div className="detail-row"><span className="detail-label">Payment Terms</span><span className="fw600">{account.paymentTerms?.replace(/_/g," ")}</span></div>
+              {account.creditLimitPence && <div className="detail-row"><span className="detail-label">Credit Limit</span><span className="fw600">£{(account.creditLimitPence/100).toFixed(2)}</span></div>}
+            </div>
+            <div className="row-between mb8"><h2 className="fw600 txt-primary" style={{fontSize:14,margin:0}}>Contact</h2>{!editing&&<button className="btn-ghost btn-sm" onClick={()=>{setEditing(true);setContactName(account.contactName);setPhone(account.phone??"")}}>Edit</button>}</div>
+            <div className="card card-pad">
+              {editing ? (
+                <>
+                  <div className="form-row"><label className="input-label">Contact Name</label><input className="input" value={contactName} onChange={e=>setContactName(e.target.value)} /></div>
+                  <div className="form-row"><label className="input-label">Phone</label><input className="input" value={phone} onChange={e=>setPhone(e.target.value)} /></div>
+                  <div className="row"><button className="btn-pink btn-sm" onClick={handleSave} disabled={saving}>{saving?"Saving…":"Save"}</button><button className="btn-ghost btn-sm" onClick={()=>setEditing(false)}>Cancel</button></div>
+                </>
+              ) : (
+                <>
+                  <div className="detail-row"><span className="detail-label">Contact Name</span><span className="fw600">{account.contactName}</span></div>
+                  <div className="detail-row"><span className="detail-label">Phone</span><span className="fw600">{account.phone??"—"}</span></div>
+                </>
+              )}
+            </div>
           </div>
           <div>
-            <p className="text-xs text-gray-500 mb-1">Payment Terms</p>
-            <p className="text-sm font-medium text-white">{account.paymentTerms?.replace('_', ' ')}</p>
+            <h2 className="fw600 txt-primary mb8" style={{fontSize:14}}>Delivery Addresses</h2>
+            {account.addresses?.map((a: any) => (
+              <div key={a.id} className="card card-pad mb8">
+                {a.label&&<p className="fw600 fs13 txt-pink mb8" style={{margin:"0 0 6px"}}>{a.label}</p>}
+                <p className="fs13 txt-secondary" style={{margin:0,lineHeight:1.8}}>{a.line1}{a.line2?", "+a.line2:""}<br/>{a.city}{a.county?", "+a.county:""}<br/><span style={{fontFamily:"monospace",fontSize:12}}>{a.postcode}</span></p>
+              </div>
+            ))}
           </div>
-          {account.creditLimitPence && (
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Credit Limit</p>
-              <p className="text-sm font-medium text-white">
-                £{(account.creditLimitPence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          )}
         </div>
-        <p className="text-xs text-gray-600">To update your business name, email, or VAT number, please contact us.</p>
-      </div>
-
-      {/* Editable contact info */}
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Contact Details</h2>
-          {!editing && (
-            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs text-brand hover:text-brand/80 transition-colors">
-              <Edit2 className="w-3 h-3" /> Edit
-            </button>
-          )}
-        </div>
-
-        {editing ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Contact Name" value={form.contactName} onChange={f('contactName')} />
-              <Input label="Phone Number" value={form.phone} onChange={f('phone')} placeholder="+44 7700 900000" />
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave} loading={saving} icon={<Save className="w-3.5 h-3.5" />}>Save Changes</Button>
-              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ contactName: account.contactName, phone: account.phone ?? '' }) }}>Cancel</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Contact Name" value={account.contactName} icon={<User className="w-4 h-4" />} />
-            <InfoRow label="Phone" value={account.phone ?? '—'} icon={<Phone className="w-4 h-4" />} />
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function AddressesTab({ addresses, onUpdate }: { addresses: Address[]; onUpdate: () => void }) {
-  const [showAdd, setShowAdd] = useState(false)
-
-  return (
-    <div className="space-y-4">
-      {addresses.map(addr => (
-        <AddressCard key={addr.id} address={addr} onUpdate={onUpdate} />
-      ))}
-
-      {showAdd ? (
-        <AddressForm onCancel={() => setShowAdd(false)} onSuccess={() => { setShowAdd(false); onUpdate() }} />
       ) : (
-        <button
-          onClick={() => setShowAdd(true)}
-          className="w-full card p-4 border-dashed flex items-center justify-center gap-2 text-gray-500 hover:text-white hover:border-white/20 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="text-sm">Add Address</span>
-        </button>
+        <div style={{maxWidth:400}}>
+          <div className="card card-pad">
+            <h2 className="fw600 txt-primary mb16" style={{fontSize:14}}>Change Password</h2>
+            <div className="form-row"><label className="input-label">Current Password</label><input className="input" type="password" value={pwForm.current} onChange={e=>setPwForm(p=>({...p,current:e.target.value}))} /></div>
+            <div className="form-row"><label className="input-label">New Password</label><input className="input" type="password" value={pwForm.next} onChange={e=>setPwForm(p=>({...p,next:e.target.value}))} /></div>
+            <div className="form-row"><label className="input-label">Confirm Password</label><input className="input" type="password" value={pwForm.confirm} onChange={e=>setPwForm(p=>({...p,confirm:e.target.value}))} /></div>
+            {pwMsg&&<p style={{fontSize:13,color:pwMsg.includes("updated")?"#0EA572":"#E11D48",margin:"0 0 12px"}}>{pwMsg}</p>}
+            <button className="btn-pink" onClick={handlePw}>Update Password</button>
+          </div>
+        </div>
       )}
     </div>
-  )
-}
-
-function AddressCard({ address, onUpdate }: { address: Address; onUpdate: () => void }) {
-  const [deleting, setDeleting] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-
-  const handleDelete = async () => {
-    setDeleting(true)
-    try {
-      const res = await fetch(`/api/account/addresses/${address.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error()
-      toast('Address removed', 'success')
-      onUpdate()
-    } catch {
-      toast('Failed to remove address', 'error')
-    } finally {
-      setDeleting(false)
-      setConfirmDelete(false)
-    }
-  }
-
-  return (
-    <div className="card p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-brand" />
-            <span className="text-sm font-medium text-white">{address.label ?? 'Delivery Address'}</span>
-            {address.isDefault && <Badge variant="success">Default</Badge>}
-          </div>
-          <div className="text-sm text-gray-400 leading-relaxed pl-6">
-            <p>{address.line1}</p>
-            {address.line2 && <p>{address.line2}</p>}
-            <p>{address.city}</p>
-            {address.county && <p>{address.county}</p>}
-            <p className="font-mono text-xs">{address.postcode}</p>
-          </div>
-        </div>
-        <div className="flex-shrink-0">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-400">Remove?</span>
-              <button onClick={handleDelete} disabled={deleting} className="text-red-400 hover:text-red-300 font-medium">Yes</button>
-              <button onClick={() => setConfirmDelete(false)} className="text-gray-500">No</button>
-            </div>
-          ) : (
-            !address.isDefault && (
-              <button onClick={() => setConfirmDelete(true)} className="text-gray-600 hover:text-red-400 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            )
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AddressForm({ onCancel, onSuccess }: { onCancel: () => void; onSuccess: () => void }) {
-  const [form, setForm] = useState({ label: '', line1: '', line2: '', city: '', county: '', postcode: '', country: 'GB' })
-  const [saving, setSaving] = useState(false)
-
-  const f = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(prev => ({ ...prev, [key]: e.target.value }))
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch('/api/account/addresses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, line2: form.line2 || undefined, county: form.county || undefined, label: form.label || undefined }),
-      })
-      if (!res.ok) throw new Error()
-      toast('Address added', 'success')
-      onSuccess()
-    } catch {
-      toast('Failed to add address', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="card p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-white">New Address</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <Input label="Label (optional)" value={form.label} onChange={f('label')} placeholder="e.g. Warehouse, Head Office" />
-        </div>
-        <div className="col-span-2">
-          <Input label="Address Line 1" value={form.line1} onChange={f('line1')} placeholder="Street address" />
-        </div>
-        <Input label="Address Line 2" value={form.line2} onChange={f('line2')} placeholder="Optional" />
-        <Input label="City" value={form.city} onChange={f('city')} />
-        <Input label="County" value={form.county} onChange={f('county')} placeholder="Optional" />
-        <Input label="Postcode" value={form.postcode} onChange={f('postcode')} />
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={handleSave} loading={saving}>Add Address</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
-      </div>
-    </div>
-  )
-}
-
-function SecurityTab({ email }: { email: string }) {
-  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
-  const [showCurrent, setShowCurrent] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  const handleChange = async () => {
-    if (form.newPassword !== form.confirmPassword) {
-      toast('Passwords do not match', 'error')
-      return
-    }
-    if (form.newPassword.length < 8) {
-      toast('Password must be at least 8 characters', 'error')
-      return
-    }
-    setSaving(true)
-    try {
-      const res = await fetch('/api/account/password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: form.currentPassword, newPassword: form.newPassword }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? 'Failed')
-      }
-      toast('Password updated', 'success')
-      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
-    } catch (err: any) {
-      toast(err.message ?? 'Failed to update password', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Login Details</h2>
-        <InfoRow label="Email Address" value={email} icon={<Mail className="w-4 h-4" />} />
-        <p className="text-xs text-gray-600">To change your email address, please contact us.</p>
-      </div>
-
-      <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Change Password</h2>
-        <div className="space-y-3 max-w-sm">
-          <div className="relative">
-            <Input
-              label="Current Password"
-              type={showCurrent ? 'text' : 'password'}
-              value={form.currentPassword}
-              onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
-            />
-            <button
-              type="button"
-              onClick={() => setShowCurrent(v => !v)}
-              className="absolute right-3 top-8 text-gray-500 hover:text-white"
-            >
-              {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          <div className="relative">
-            <Input
-              label="New Password"
-              type={showNew ? 'text' : 'password'}
-              value={form.newPassword}
-              onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
-              hint="At least 8 characters"
-            />
-            <button
-              type="button"
-              onClick={() => setShowNew(v => !v)}
-              className="absolute right-3 top-8 text-gray-500 hover:text-white"
-            >
-              {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          <Input
-            label="Confirm New Password"
-            type="password"
-            value={form.confirmPassword}
-            onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
-          />
-        </div>
-        <Button
-          size="sm"
-          onClick={handleChange}
-          loading={saving}
-          disabled={!form.currentPassword || !form.newPassword || !form.confirmPassword}
-          icon={<Save className="w-3.5 h-3.5" />}
-        >
-          Update Password
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function InfoRow({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <div className="flex items-center gap-1.5">
-        {icon && <span className="text-gray-500">{icon}</span>}
-        <p className={`text-sm text-white ${mono ? 'font-mono text-xs' : ''}`}>{value}</p>
-      </div>
-    </div>
+    </>
   )
 }
