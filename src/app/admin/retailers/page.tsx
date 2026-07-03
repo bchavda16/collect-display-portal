@@ -1,169 +1,515 @@
-"use client"
-import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatDate } from "@/lib/utils"
+'use client'
+
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Search, UserPlus, Building2, Mail, Phone, ChevronLeft, ChevronRight, X, Eye, CreditCard } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
+import { toast } from '@/components/ui/Toaster'
+import { useDebounce } from '@/hooks/useDebounce'
+import { formatCurrencyFromPounds, formatDate } from '@/lib/utils'
+import type { RetailerWithUser } from '@/types'
+
+const PRICING_TIERS = ['STANDARD', 'SILVER', 'GOLD', 'PLATINUM']
+const PAYMENT_TERMS = ['PROFORMA', 'NET_14', 'NET_30', 'NET_60']
 
 export default function AdminRetailersPage() {
-  const qc = useQueryClient()
-  const [search, setSearch] = useState("")
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ businessName:"", contactName:"", email:"", phone:"", pricingTier:"STANDARD", paymentTerms:"PROFORMA", addressLine1:"", city:"", postcode:"" })
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedRetailer, setSelectedRetailer] = useState<RetailerWithUser | null>(null)
+
+  const debouncedSearch = useDebounce(search, 300)
+
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: '20',
+    ...(debouncedSearch && { search: debouncedSearch }),
+  })
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-retailers", search, page],
+    queryKey: ['admin-retailers', debouncedSearch, page],
     queryFn: async () => {
-      const p = new URLSearchParams({ page: String(page), limit: "20", ...(search&&{search}) })
-      const r = await fetch("/api/retailers?"+p); return r.json()
+      const res = await fetch(`/api/retailers?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch retailers')
+      return res.json()
     },
   })
 
-  const createMutation = useMutation({
-    mutationFn: async (body: any) => { const r = await fetch("/api/retailers", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) }); return r.json() },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-retailers"]}); setShowCreate(false); setForm({businessName:"",contactName:"",email:"",phone:"",pricingTier:"STANDARD",paymentTerms:"PROFORMA",addressLine1:"",city:"",postcode:""}) },
-  })
+  const retailers: RetailerWithUser[] = data?.data ?? []
+  const total: number = data?.total ?? 0
+  const totalPages: number = data?.totalPages ?? 1
 
-  const tierBadge: Record<string,string> = { PLATINUM:"badge-purple", GOLD:"badge-amber", SILVER:"badge-teal", STANDARD:"badge-grey" }
-  const retailers = data?.data ?? []
-  const totalPages = data?.totalPages ?? 1
-  const f = (k: string) => (e: any) => setForm(prev => ({...prev, [k]: e.target.value}))
+  const tierColour = (tier: string) => {
+    switch (tier) {
+      case 'PLATINUM': return 'purple'
+      case 'GOLD': return 'warning'
+      case 'SILVER': return 'info'
+      default: return 'default'
+    }
+  }
 
   return (
-    <>
-    <style>{`
-  .p-page{padding:24px;font-family:system-ui,sans-serif}
-  .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-  .page-sub{font-size:13px;color:#8888AA;margin:0 0 24px}
-  .section-head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 10px}
-  .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .card-pad{padding:16px}
-  .card-table{overflow:hidden}
-  .tbl{width:100%;border-collapse:collapse}
-  .tbl th{background:#F4F5F7;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8888AA;padding:10px 14px;text-align:left;border-bottom:1px solid rgba(0,0,0,.08)}
-  .tbl td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.06);color:#1A1A2E}
-  .tbl tr:last-child td{border-bottom:none}
-  .tbl tr:hover td{background:rgba(0,0,0,.01)}
-  .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
-  .badge-teal{background:#E8F8F7;color:#3A9E9B}
-  .badge-purple{background:#F3EEFF;color:#7C3AED}
-  .badge-amber{background:#FEF3C7;color:#D97706}
-  .badge-green{background:#EAFAF3;color:#0EA572}
-  .badge-grey{background:#F4F5F7;color:#8888AA}
-  .badge-red{background:#FFF1F4;color:#E11D48}
-  .badge-pink{background:#FDE8EF;color:#C4638A}
-  .row{display:flex;align-items:center;gap:12px}
-  .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .grid-3-1{display:grid;grid-template-columns:3fr 1fr;gap:16px}
-  .mb4{margin-bottom:4px}.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}
-  .mt8{margin-top:8px}.mt16{margin-top:16px}
-  .txt-primary{color:#1A1A2E}.txt-secondary{color:#4A4A6A}.txt-muted{color:#8888AA}
-  .txt-pink{color:#C4638A}.txt-teal{color:#3A9E9B}.txt-green{color:#0EA572}.txt-red{color:#E11D48}.txt-amber{color:#D97706}
-  .fw600{font-weight:600}.fw700{font-weight:700}
-  .fs11{font-size:11px}.fs12{font-size:12px}.fs13{font-size:13px}
-  .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
-  .btn-pink:hover{background:#E88BAA}
-  .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
-  .btn-ghost:hover{background:#F4F5F7}
-  .btn-sm{padding:5px 10px;font-size:12px}
-  .input{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white}
-  .input:focus{border-color:#F0A3BC;box-shadow:0 0 0 3px rgba(240,163,188,.15)}
-  .input-label{display:block;font-size:11px;font-weight:600;color:#4A4A6A;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
-  .select{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;background:white;cursor:pointer}
-  .chip{padding:4px 12px;border-radius:99px;font-size:12px;font-weight:500;background:#F4F5F7;color:#4A4A6A;cursor:pointer;border:none}
-  .chip:hover{background:#FDE8EF;color:#C4638A}
-  .chip-active{background:#F0A3BC;color:white}
-  .chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-  .search-box{display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:1px solid rgba(0,0,0,.09);border-radius:10px;margin-bottom:14px}
-  .search-box input{border:none;outline:none;font-size:13px;color:#1A1A2E;background:transparent;flex:1}
-  .product-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;overflow:hidden;transition:box-shadow .2s}
-  .product-card:hover{box-shadow:0 4px 16px rgba(240,163,188,.2);border-color:rgba(240,163,188,.4)}
-  .product-img{height:120px;background:#F4F5F7;display:flex;align-items:center;justify-content:center;font-size:36px;position:relative}
-  .product-body{padding:12px}
-  .price-grid{display:grid;grid-template-columns:repeat(3,1fr);background:#F9FAFB;border:1px solid rgba(0,0,0,.07);border-radius:8px;padding:8px;margin:8px 0}
-  .price-col{text-align:center}
-  .price-col-label{font-size:9px;color:#8888AA;margin:0 0 2px}
-  .price-col-val{font-size:12px;font-weight:600;color:#1A1A2E;margin:0}
-  .price-col-val.pink{color:#C4638A}
-  .price-col-val.muted{color:#8888AA}
-  .stepper{display:flex;align-items:center;border:1px solid rgba(0,0,0,.12);border-radius:8px;overflow:hidden}
-  .stepper button{background:#F4F5F7;border:none;padding:6px 10px;font-size:14px;cursor:pointer;color:#4A4A6A}
-  .stepper span{font-size:13px;font-weight:600;padding:0 8px;color:#1A1A2E;min-width:30px;text-align:center}
-  .add-btn{flex:1;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;padding:7px;display:flex;align-items:center;justify-content:center;gap:4px}
-  .add-btn:hover{background:#E88BAA}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(2px);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
-  .modal{background:white;border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
-  .modal-title{font-size:16px;font-weight:700;color:#1A1A2E;margin:0 0 20px;display:flex;align-items:center;justify-content:space-between}
-  .form-row{margin-bottom:14px}
-  .stat-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 8px}
-  .stat-val{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-  .stat-sub{font-size:12px;margin:0;color:#8888AA}
-  .annc-card{border-left:3px solid #5CC8C5;background:#E8F8F7;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:10px}
-  .annc-card.pink{border-color:#F0A3BC;background:#FDE8EF}
-  .annc-title{font-size:13px;font-weight:600;color:#1A1A2E;margin:0 0 4px}
-  .annc-body{font-size:12px;color:#4A4A6A;margin:0}
-  .tag-pink{background:#FDE8EF;color:#C4638A;border:1px solid rgba(240,163,188,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
-  .tag-teal{background:#E8F8F7;color:#3A9E9B;border:1px solid rgba(92,200,197,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
-  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px;text-align:center}
-  .pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid rgba(0,0,0,.08)}
-  .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.08)}
-  .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08)}
-  .drawer-body{flex:1;overflow-y:auto;padding:16px}
-  .drawer-footer{border-top:1px solid rgba(0,0,0,.08);padding:16px}
-  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40}
-`}</style>
-    <div className="p-page">
-      <div className="row-between mb24">
-        <div><h1 className="page-title">Retailers</h1><p className="page-sub">{data?.total??0} accounts</p></div>
-        <button className="btn-pink" onClick={()=>setShowCreate(true)}>+ Add Retailer</button>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Retailers</h1>
+          <p className="text-sm text-gray-400 mt-0.5">{total.toLocaleString()} accounts</p>
+        </div>
+        <Button onClick={() => setShowCreateModal(true)} icon={<UserPlus className="w-4 h-4" />}>
+          Add Retailer
+        </Button>
       </div>
-      <div className="search-box mb16"><span style={{color:"#8888AA"}}>🔍</span><input placeholder="Search by name or email…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} /></div>
-      <div className="card card-table">
-        <table className="tbl">
-          <thead><tr><th>Business</th><th>Contact</th><th>Tier</th><th>Terms</th><th>Orders</th><th>Joined</th></tr></thead>
-          <tbody>
-            {isLoading ? <tr><td colSpan={6} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>Loading…</td></tr>
-            : retailers.length===0 ? <tr><td colSpan={6} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No retailers found</td></tr>
-            : retailers.map((r: any) => (
-              <tr key={r.id}>
-                <td><p className="fw600 fs13" style={{margin:0}}>{r.businessName}</p><p className="txt-muted fs12" style={{margin:0}}>{r.user?.email}</p></td>
-                <td><p className="fs13" style={{margin:0}}>{r.contactName}</p>{r.phone&&<p className="txt-muted fs12" style={{margin:0}}>{r.phone}</p>}</td>
-                <td><span className={"badge "+(tierBadge[r.pricingTier]??"badge-grey")}>{r.pricingTier}</span></td>
-                <td className="txt-secondary fs13">{r.paymentTerms?.replace(/_/g," ")}</td>
-                <td className="txt-secondary">{r._count?.orders??0}</td>
-                <td className="txt-muted fs13">{formatDate(r.createdAt)}</td>
+
+      {/* Search */}
+      <div className="card p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by business name, email, or contact name…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            className="w-full bg-bg-base border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand/50"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Business</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Contact</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Tier</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Terms</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Credit Limit</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Orders</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Joined</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {totalPages>1 && <div className="pagination"><span className="txt-muted fs13">Page {page} of {totalPages}</span><div className="row" style={{gap:8}}><button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button><button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button></div></div>}
-      </div>
-      {showCreate && (
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowCreate(false)}>
-          <div className="modal">
-            <div className="modal-title">Add Retailer <button onClick={()=>setShowCreate(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#8888AA"}}>×</button></div>
-            <div className="grid2">
-              <div className="form-row" style={{gridColumn:"1/-1"}}><label className="input-label">Business Name</label><input className="input" value={form.businessName} onChange={f("businessName")} /></div>
-              <div className="form-row"><label className="input-label">Contact Name</label><input className="input" value={form.contactName} onChange={f("contactName")} /></div>
-              <div className="form-row"><label className="input-label">Email</label><input className="input" type="email" value={form.email} onChange={f("email")} /></div>
-              <div className="form-row"><label className="input-label">Phone</label><input className="input" value={form.phone} onChange={f("phone")} /></div>
-              <div className="form-row"><label className="input-label">Pricing Tier</label><select className="select" value={form.pricingTier} onChange={f("pricingTier")}>{["STANDARD","SILVER","GOLD","PLATINUM"].map(t=><option key={t} value={t}>{t}</option>)}</select></div>
-              <div className="form-row"><label className="input-label">Payment Terms</label><select className="select" value={form.paymentTerms} onChange={f("paymentTerms")}>{["PROFORMA","NET_14","NET_30","NET_60"].map(t=><option key={t} value={t}>{t.replace(/_/g," ")}</option>)}</select></div>
-              <div className="form-row" style={{gridColumn:"1/-1"}}><label className="input-label">Address Line 1</label><input className="input" value={form.addressLine1} onChange={f("addressLine1")} /></div>
-              <div className="form-row"><label className="input-label">City</label><input className="input" value={form.city} onChange={f("city")} /></div>
-              <div className="form-row"><label className="input-label">Postcode</label><input className="input" value={form.postcode} onChange={f("postcode")} /></div>
-            </div>
-            <div className="row" style={{gap:8,marginTop:8}}>
-              <button className="btn-ghost" style={{flex:1}} onClick={()=>setShowCreate(false)}>Cancel</button>
-              <button className="btn-pink" style={{flex:1}} onClick={()=>createMutation.mutate({...form,address:{line1:form.addressLine1,city:form.city,postcode:form.postcode,country:"GB"}})} disabled={createMutation.isPending}>{createMutation.isPending?"Creating…":"Create & Send Welcome Email"}</button>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {isLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-white/5 rounded animate-pulse" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : retailers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-16 text-gray-500">
+                    <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    No retailers found
+                  </td>
+                </tr>
+              ) : (
+                retailers.map((retailer) => (
+                  <tr key={retailer.id} className="hover:bg-white/2 transition-colors">
+                    {/* Business */}
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-white">{retailer.businessName}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Mail className="w-3 h-3 text-gray-600" />
+                          <span className="text-xs text-gray-500">{retailer.user?.email}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Contact */}
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="text-sm text-gray-300">{retailer.contactName}</p>
+                        {retailer.phone && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3 text-gray-600" />
+                            <span className="text-xs text-gray-500">{retailer.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Tier */}
+                    <td className="px-4 py-3">
+                      <Badge variant={tierColour(retailer.pricingTier) as any}>
+                        {retailer.pricingTier}
+                      </Badge>
+                    </td>
+
+                    {/* Payment Terms */}
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-400">{retailer.paymentTerms?.replace('_', ' ') ?? 'PROFORMA'}</span>
+                    </td>
+
+                    {/* Credit Limit */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm text-white">
+                        {retailer.creditLimitPence
+                          ? formatCurrencyFromPounds(retailer.creditLimitPence)
+                          : <span className="text-gray-600">—</span>}
+                      </span>
+                    </td>
+
+                    {/* Orders */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm text-gray-300">{retailer._count?.orders ?? 0}</span>
+                    </td>
+
+                    {/* Joined */}
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-400">{formatDate(retailer.createdAt)}</span>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setSelectedRetailer(retailer)}
+                        className="text-gray-500 hover:text-white transition-colors"
+                        title="View details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
+            <p className="text-sm text-gray-400">
+              Page {page} of {totalPages} · {total.toLocaleString()} retailers
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} icon={<ChevronLeft className="w-4 h-4" />}>Prev</Button>
+              <Button variant="ghost" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next <ChevronRight className="w-4 h-4 ml-1" /></Button>
             </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Create Retailer Modal */}
+      {showCreateModal && (
+        <CreateRetailerModal onClose={() => setShowCreateModal(false)} onSuccess={() => {
+          setShowCreateModal(false)
+          queryClient.invalidateQueries({ queryKey: ['admin-retailers'] })
+        }} />
+      )}
+
+      {/* Retailer Detail Panel */}
+      {selectedRetailer && (
+        <RetailerDetailPanel
+          retailer={selectedRetailer}
+          onClose={() => setSelectedRetailer(null)}
+          onUpdate={() => queryClient.invalidateQueries({ queryKey: ['admin-retailers'] })}
+        />
       )}
     </div>
-    </>
+  )
+}
+
+function CreateRetailerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({
+    businessName: '', contactName: '', email: '', phone: '',
+    pricingTier: 'STANDARD', paymentTerms: 'PROFORMA',
+    creditLimit: '', vatNumber: '',
+    addressLine1: '', addressLine2: '', city: '', county: '', postcode: '', country: 'GB',
+  })
+  const [loading, setLoading] = useState(false)
+
+  const f = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(prev => ({ ...prev, [key]: e.target.value }))
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/retailers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: form.businessName,
+          contactName: form.contactName,
+          email: form.email,
+          phone: form.phone || undefined,
+          pricingTier: form.pricingTier,
+          paymentTerms: form.paymentTerms,
+          creditLimitPence: form.creditLimit ? Math.round(parseFloat(form.creditLimit) * 100) : undefined,
+          vatNumber: form.vatNumber || undefined,
+          address: {
+            line1: form.addressLine1,
+            line2: form.addressLine2 || undefined,
+            city: form.city,
+            county: form.county || undefined,
+            postcode: form.postcode,
+            country: form.country,
+          },
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Failed to create retailer')
+      }
+      toast('Retailer created — welcome email sent', 'success')
+      onSuccess()
+    } catch (err: any) {
+      toast(err.message ?? 'Failed to create retailer', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="card w-full max-w-2xl p-6 space-y-5 my-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Add Retailer</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Business Details</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Input label="Business Name" value={form.businessName} onChange={f('businessName')} placeholder="e.g. Galaxy Collectibles Ltd" />
+            </div>
+            <Input label="Contact Name" value={form.contactName} onChange={f('contactName')} placeholder="Full name" />
+            <Input label="Email Address" type="email" value={form.email} onChange={f('email')} placeholder="owner@business.com" />
+            <Input label="Phone" value={form.phone} onChange={f('phone')} placeholder="+44 7700 900000" />
+            <Input label="VAT Number" value={form.vatNumber} onChange={f('vatNumber')} placeholder="GB123456789" />
+          </div>
+
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Account Settings</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5">Pricing Tier</label>
+              <select value={form.pricingTier} onChange={f('pricingTier')} className="w-full bg-bg-base border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand/50">
+                {PRICING_TIERS.map(t => <option key={t} value={t} className="bg-bg-surface">{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5">Payment Terms</label>
+              <select value={form.paymentTerms} onChange={f('paymentTerms')} className="w-full bg-bg-base border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand/50">
+                {PAYMENT_TERMS.map(t => <option key={t} value={t} className="bg-bg-surface">{t.replace('_', ' ')}</option>)}
+              </select>
+            </div>
+            <Input label="Credit Limit (£)" type="number" step="100" value={form.creditLimit} onChange={f('creditLimit')} placeholder="0.00" hint="Leave blank for no limit" />
+          </div>
+
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Delivery Address</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Input label="Address Line 1" value={form.addressLine1} onChange={f('addressLine1')} placeholder="Street address" />
+            </div>
+            <Input label="Address Line 2" value={form.addressLine2} onChange={f('addressLine2')} placeholder="Optional" />
+            <Input label="City" value={form.city} onChange={f('city')} placeholder="City" />
+            <Input label="County" value={form.county} onChange={f('county')} placeholder="Optional" />
+            <Input label="Postcode" value={form.postcode} onChange={f('postcode')} placeholder="e.g. B1 1AA" />
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
+          <Button onClick={handleSubmit} loading={loading} className="flex-1">Create & Send Welcome Email</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RetailerDetailPanel({ retailer, onClose, onUpdate }: {
+  retailer: RetailerWithUser
+  onClose: () => void
+  onUpdate: () => void
+}) {
+  const [editingTier, setEditingTier] = useState(false)
+  const [tier, setTier] = useState(retailer.pricingTier)
+  const [editingTerms, setEditingTerms] = useState(false)
+  const [terms, setTerms] = useState(retailer.paymentTerms ?? 'PROFORMA')
+  const [saving, setSaving] = useState(false)
+
+  const saveTier = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/retailers/${retailer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pricingTier: tier }),
+      })
+      if (!res.ok) throw new Error()
+      toast('Pricing tier updated', 'success')
+      setEditingTier(false)
+      onUpdate()
+    } catch {
+      toast('Update failed', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveTerms = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/retailers/${retailer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentTerms: terms }),
+      })
+      if (!res.ok) throw new Error()
+      toast('Payment terms updated', 'success')
+      setEditingTerms(false)
+      onUpdate()
+    } catch {
+      toast('Update failed', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-96 bg-bg-surface border-l border-white/10 z-50 flex flex-col shadow-2xl">
+      {/* Header */}
+      <div className="flex items-center justify-between p-5 border-b border-white/10">
+        <div>
+          <h2 className="font-semibold text-white">{retailer.businessName}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{retailer.user?.email}</p>
+        </div>
+        <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        {/* Contact */}
+        <section>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Contact</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Name</span>
+              <span className="text-white">{retailer.contactName}</span>
+            </div>
+            {retailer.phone && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Phone</span>
+                <span className="text-white">{retailer.phone}</span>
+              </div>
+            )}
+            {retailer.vatNumber && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">VAT No.</span>
+                <span className="text-white font-mono text-xs">{retailer.vatNumber}</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Account */}
+        <section>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Account</h3>
+          <div className="space-y-3">
+            {/* Pricing Tier */}
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-400">Pricing Tier</span>
+              {editingTier ? (
+                <div className="flex items-center gap-2">
+                  <select value={tier} onChange={e => setTier(e.target.value)} className="bg-bg-base border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none">
+                    {PRICING_TIERS.map(t => <option key={t} value={t} className="bg-bg-surface">{t}</option>)}
+                  </select>
+                  <button onClick={saveTier} disabled={saving} className="text-xs text-emerald-400 hover:text-emerald-300 font-medium">Save</button>
+                  <button onClick={() => setEditingTier(false)} className="text-xs text-gray-500">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setEditingTier(true)} className="flex items-center gap-1 group">
+                  <span className="text-white">{retailer.pricingTier}</span>
+                  <Edit2Icon className="w-3 h-3 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
+            </div>
+
+            {/* Payment Terms */}
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-400">Payment Terms</span>
+              {editingTerms ? (
+                <div className="flex items-center gap-2">
+                  <select value={terms} onChange={e => setTerms(e.target.value)} className="bg-bg-base border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none">
+                    {PAYMENT_TERMS.map(t => <option key={t} value={t} className="bg-bg-surface">{t.replace('_', ' ')}</option>)}
+                  </select>
+                  <button onClick={saveTerms} disabled={saving} className="text-xs text-emerald-400 hover:text-emerald-300 font-medium">Save</button>
+                  <button onClick={() => setEditingTerms(false)} className="text-xs text-gray-500">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setEditingTerms(true)} className="flex items-center gap-1 group">
+                  <span className="text-white">{retailer.paymentTerms?.replace('_', ' ') ?? 'PROFORMA'}</span>
+                  <Edit2Icon className="w-3 h-3 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
+            </div>
+
+            {retailer.creditLimitPence && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Credit Limit</span>
+                <span className="text-white">{formatCurrencyFromPounds(retailer.creditLimitPence)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Total Orders</span>
+              <span className="text-white">{retailer._count?.orders ?? 0}</span>
+            </div>
+
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Joined</span>
+              <span className="text-white">{formatDate(retailer.createdAt)}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Address */}
+        {retailer.addresses?.[0] && (
+          <section>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Default Address</h3>
+            <div className="text-sm text-gray-300 leading-relaxed">
+              <p>{retailer.addresses[0].line1}</p>
+              {retailer.addresses[0].line2 && <p>{retailer.addresses[0].line2}</p>}
+              <p>{retailer.addresses[0].city}</p>
+              {retailer.addresses[0].county && <p>{retailer.addresses[0].county}</p>}
+              <p className="font-mono text-xs">{retailer.addresses[0].postcode}</p>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-white/10">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full"
+          onClick={() => window.open(`/admin/orders?retailer=${retailer.id}`, '_blank')}
+        >
+          View All Orders →
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// Inline icon to avoid import clash with Edit2 from lucide
+function Edit2Icon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
   )
 }
