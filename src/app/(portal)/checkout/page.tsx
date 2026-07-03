@@ -1,191 +1,150 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ShoppingCart, CheckCircle } from "lucide-react";
-import { checkoutSchema, type CheckoutInput } from "@/lib/validations";
-import { useBasket } from "@/hooks/useBasket";
-import { Button } from "@/components/ui/Button";
-import { Input, Textarea } from "@/components/ui/Input";
-import { formatCurrencyFromPounds } from "@/lib/utils";
-import { toast } from "@/components/ui/Toaster";
-import type { ApiResponse } from "@/types";
-import Link from "next/link";
+"use client"
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import { formatCurrencyFromPounds } from "@/lib/utils"
+import Link from "next/link"
 
 export default function CheckoutPage() {
-  const router = useRouter();
-  const { data: basket, isLoading } = useBasket();
-  const [submitted, setSubmitted] = useState(false);
-  const [orderNumber, setOrderNumber] = useState("");
+  const router = useRouter()
+  const [poRef, setPoRef] = useState("")
+  const [deliveryDate, setDeliveryDate] = useState("")
+  const [notes, setNotes] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState<string|null>(null)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<CheckoutInput>({
-    resolver: zodResolver(checkoutSchema),
-  });
+  const { data: basket } = useQuery({
+    queryKey: ["basket"],
+    queryFn: async () => { const r = await fetch("/api/basket"); return r.json() },
+  })
 
-  async function onSubmit(data: CheckoutInput) {
-    const res = await fetch("/api/orders", {
+  const items = basket?.items ?? []
+  const subtotal = basket?.subtotalPence ?? 0
+  const vat = basket?.vatPence ?? 0
+  const total = basket?.totalPence ?? 0
+
+  const handleSubmit = async () => {
+    if (!poRef.trim()) { setError("PO Reference is required"); return }
+    setLoading(true); setError("")
+    const r = await fetch("/api/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    const json: ApiResponse<{ orderNumber: string }> = await res.json();
-
-    if (!json.success || !json.data) {
-      toast("Order failed", "error");
-      return;
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ poReference: poRef, requestedDeliveryDate: deliveryDate || undefined, deliveryNotes: notes || undefined })
+    })
+    const d = await r.json()
+    setLoading(false)
+    if (d.success) {
+      setSuccess(d.data.orderNumber)
+    } else {
+      setError(d.error ?? "Failed to place order")
     }
-
-    setOrderNumber(json.data.orderNumber);
-    setSubmitted(true);
   }
 
-  if (submitted) {
+  if (success) {
     return (
-      <div className="flex items-center justify-center h-full p-6">
-        <div className="text-center max-w-sm flex flex-col items-center gap-5">
-          <div className="w-16 h-16 rounded-full bg-emerald/15 flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-emerald" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-text-primary">Order placed!</h1>
-            <p className="text-sm text-text-muted mt-1">
-              Order {orderNumber} has been submitted. You&apos;ll receive a confirmation email shortly.
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Link href="/orders">
-              <Button variant="primary">View Orders</Button>
-            </Link>
-            <Link href="/stock">
-              <Button variant="secondary">Continue Shopping</Button>
-            </Link>
-          </div>
-        </div>
+      <>
+      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.success-icon{font-size:64px;margin-bottom:16px}.success-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px}.success-sub{font-size:14px;color:#8888AA;margin:0 0 32px}.btn-pink{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;margin:0 6px}.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;margin:0 6px}`}</style>
+      <div className="checkout-page">
+        <div className="success-icon">🎉</div>
+        <h1 className="success-title">Order placed!</h1>
+        <p className="success-sub">{success} has been submitted successfully. You will receive a confirmation email shortly.</p>
+        <div><Link href="/orders" className="btn-pink">View my orders</Link><Link href="/stock" className="btn-ghost">Continue shopping</Link></div>
       </div>
-    );
+      </>
+    )
   }
 
-  if (isLoading) {
+  if (items.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted text-sm">
-        Loading…
+      <>
+      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
+      <div className="checkout-page">
+        <div style={{fontSize:48,marginBottom:16}}>🛒</div>
+        <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Your basket is empty</h1>
+        <p style={{fontSize:13,color:"#8888AA",marginBottom:24}}>Add some products before checking out</p>
+        <Link href="/stock" className="btn-pink">Browse stock</Link>
       </div>
-    );
-  }
-
-  if (!basket || basket.items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-6">
-        <ShoppingCart className="w-8 h-8 text-text-disabled" />
-        <div>
-          <p className="text-sm font-medium text-text-primary">Your basket is empty</p>
-          <p className="text-xs text-text-muted mt-1">Add products before checking out</p>
-        </div>
-        <Link href="/stock">
-          <Button variant="primary">Browse Stock</Button>
-        </Link>
-      </div>
-    );
+      </>
+    )
   }
 
   return (
-    <div className="p-6 max-w-3xl">
-      <h1 className="text-xl font-semibold text-text-primary mb-6">Checkout</h1>
-
-      <div className="grid md:grid-cols-[1fr_300px] gap-6">
-        {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-          <div className="card p-5 flex flex-col gap-4">
-            <h2 className="text-sm font-semibold">Order Details</h2>
-
-            <Input
-              label="PO Reference *"
-              placeholder="e.g. PO-2024-001"
-              error={errors.poReference?.message}
-              hint="Your internal purchase order number"
-              {...register("poReference")}
-            />
-
-            <Input
-              label="Requested Delivery Date"
-              type="date"
-              error={errors.requestedDeliveryDate?.message}
-              hint="We'll do our best to meet your preferred date"
-              {...register("requestedDeliveryDate")}
-            />
-
-            <Textarea
-              label="Delivery Notes"
-              placeholder="Special delivery instructions, access notes…"
-              rows={3}
-              error={errors.deliveryNotes?.message}
-              {...register("deliveryNotes")}
-            />
+    <>
+    <style>{`
+      body{font-family:system-ui,sans-serif}
+      .checkout-page{padding:24px;max-width:900px}
+      .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 24px}
+      .checkout-grid{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+      .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+      .card-head{padding:14px 20px;border-bottom:1px solid rgba(0,0,0,.07);font-size:14px;font-weight:600;color:#1A1A2E}
+      .card-body{padding:20px}
+      .form-group{margin-bottom:18px}
+      .form-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4A4A6A;margin-bottom:7px}
+      .form-input{width:100%;padding:11px 14px;border:1.5px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white;transition:border-color .15s}
+      .form-input:focus{border-color:#F0A3BC;box-shadow:0 0 0 3px rgba(240,163,188,.15)}
+      .form-hint{font-size:11px;color:#8888AA;margin-top:5px}
+      .submit-btn{width:100%;padding:14px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
+      .submit-btn:hover{background:#E88BAA}
+      .submit-btn:disabled{opacity:.6;cursor:not-allowed}
+      .error-box{background:#FFF1F4;border:1px solid rgba(225,29,72,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#E11D48;margin-bottom:16px}
+      .line-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+      .line-item:last-child{border-bottom:none}
+      .line-name{font-size:13px;font-weight:500;color:#1A1A2E;margin:0 0 2px}
+      .line-meta{font-size:11px;color:#8888AA;margin:0}
+      .line-price{font-size:13px;font-weight:600;color:#1A1A2E;flex-shrink:0}
+      .totals-row{display:flex;justify-content:space-between;font-size:13px;color:#8888AA;padding:5px 0}
+      .totals-final{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#C4638A;padding-top:10px;border-top:1.5px solid rgba(0,0,0,.08);margin-top:6px}
+    `}</style>
+    <div className="checkout-page">
+      <h1 className="page-title">Checkout</h1>
+      <div className="checkout-grid">
+        <div className="card">
+          <div className="card-head">Order Details</div>
+          <div className="card-body">
+            <div className="form-group">
+              <label className="form-label">PO Reference *</label>
+              <input className="form-input" value={poRef} onChange={e=>setPoRef(e.target.value)} placeholder="e.g. PO-2026-001" />
+              <p className="form-hint">Your internal purchase order number</p>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Requested Delivery Date</label>
+              <input className="form-input" type="date" value={deliveryDate} onChange={e=>setDeliveryDate(e.target.value)} />
+              <p className="form-hint">We will do our best to meet your preferred date</p>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Delivery Notes</label>
+              <textarea className="form-input" rows={3} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Special delivery instructions, access notes…" style={{resize:"none"}} />
+            </div>
+            {error && <div className="error-box">{error}</div>}
+            <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
+              {loading ? "Placing order…" : "Place Order · "+formatCurrencyFromPounds(total)}
+            </button>
+            <p style={{fontSize:11,color:"#8888AA",textAlign:"center",marginTop:12}}>By placing this order you agree to our <a href="#" style={{color:"#F0A3BC"}}>terms of trade</a>.</p>
           </div>
+        </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            loading={isSubmitting}
-            className="w-full"
-          >
-            Place Order
-          </Button>
-
-          <p className="text-xs text-text-muted text-center">
-            By placing this order you agree to our{" "}
-            <a href="#" className="text-brand hover:underline">
-              terms of trade
-            </a>
-            .
-          </p>
-        </form>
-
-        {/* Order summary */}
-        <div className="card p-5 flex flex-col gap-4 h-fit">
-          <h2 className="text-sm font-semibold">
-            Summary ({basket.items.length} {basket.items.length === 1 ? "line" : "lines"})
-          </h2>
-
-          <div className="flex flex-col gap-2">
-            {basket.items.map((item) => (
-              <div key={item.id} className="flex justify-between text-xs">
-                <span className="text-text-secondary truncate mr-2 flex-1">
-                  {item.productName}{" "}
-                  <span className="text-text-muted">×{item.quantity}</span>
-                </span>
-                <span className="text-text-primary font-medium shrink-0">
-                  {formatCurrencyFromPounds(item.lineTotalPence)}
-                </span>
+        <div className="card">
+          <div className="card-head">Summary ({items.length} {items.length===1?"line":"lines"})</div>
+          <div className="card-body" style={{paddingBottom:0}}>
+            {items.map((item: any) => (
+              <div key={item.id} className="line-item">
+                <div style={{minWidth:0}}>
+                  <p className="line-name">{item.productName}</p>
+                  <p className="line-meta">×{item.quantity} units</p>
+                </div>
+                <span className="line-price">{formatCurrencyFromPounds(item.lineTotalPence)}</span>
               </div>
             ))}
           </div>
-
-          <div className="border-t border-border pt-3 flex flex-col gap-1.5">
-            <div className="flex justify-between text-xs text-text-secondary">
-              <span>Subtotal</span>
-              <span>{formatCurrencyFromPounds(basket.subtotalPence)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-text-secondary">
-              <span>VAT (20%)</span>
-              <span>{formatCurrencyFromPounds(basket.vatPence)}</span>
-            </div>
-            <div className="flex justify-between text-sm font-bold text-text-primary pt-1">
-              <span>Total</span>
-              <span>{formatCurrencyFromPounds(basket.totalPence)}</span>
-            </div>
-            <p className="text-[10px] text-text-muted">
-            </p>
+          <div style={{padding:"14px 20px"}}>
+            <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrencyFromPounds(subtotal)}</span></div>
+            <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrencyFromPounds(vat)}</span></div>
+            <div className="totals-final"><span>Total</span><span>{formatCurrencyFromPounds(total)}</span></div>
           </div>
         </div>
       </div>
     </div>
-  );
+    </>
+  )
 }

@@ -2,26 +2,20 @@ import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import Link from "next/link"
-import { ChevronLeft, Package, Truck, ExternalLink } from "lucide-react"
-import { OrderStatusBadge } from "@/components/ui/Badge"
 import { formatCurrencyFromPounds, formatDate, formatDateTime } from "@/lib/utils"
 
-const ALL_STATUSES = ["PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED"] as const
-
-const STATUS_LABELS: Record<string, string> = {
-  PLACED: "Placed", CONFIRMED: "Confirmed", PROCESSING: "Processing",
-  PICKED: "Picked", PACKED: "Packed", DISPATCHED: "Dispatched",
-  OUT_FOR_DELIVERY: "Out for Delivery", DELIVERED: "Delivered",
+const ALL_STATUSES = ["PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED"]
+const STATUS_LABELS: Record<string,string> = {
+  PLACED:"Placed",CONFIRMED:"Confirmed",PROCESSING:"Processing",PICKED:"Picked",
+  PACKED:"Packed",DISPATCHED:"Dispatched",OUT_FOR_DELIVERY:"Out for Delivery",DELIVERED:"Delivered"
 }
-
-const CARRIER_URLS: Record<string, string> = {
-  "Royal Mail": "https://www.royalmail.com/track-your-item#/tracking-results/",
-  "DPD": "https://www.dpd.co.uk/apps/tracking/?reference=",
-  "Evri": "https://www.evri.com/track-a-parcel#/tracking/",
-  "DHL": "https://www.dhl.com/gb-en/home/tracking.html?tracking-id=",
-  "UPS": "https://www.ups.com/track?tracknum=",
-  "FedEx": "https://www.fedex.com/fedextrack/?tracknumbers=",
-  "Yodel": "https://www.yodel.co.uk/track/",
+const CARRIERS: Record<string,string> = {
+  "Royal Mail":"https://www.royalmail.com/track-your-item#/tracking-results/",
+  "DPD":"https://www.dpd.co.uk/apps/tracking/?reference=",
+  "Evri":"https://www.evri.com/track-a-parcel#/tracking/",
+  "DHL":"https://www.dhl.com/gb-en/home/tracking.html?tracking-id=",
+  "UPS":"https://www.ups.com/track?tracknum=",
+  "Yodel":"https://www.yodel.co.uk/track/",
 }
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
@@ -36,7 +30,6 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       statusHistory: { orderBy: { createdAt: "asc" } },
     },
   })
-
   if (!order) notFound()
 
   if ((session.user as any).role !== "ADMIN") {
@@ -44,122 +37,169 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     if (!retailer || order.retailerId !== retailer.id) notFound()
   }
 
-  const reachedStatuses = new Set(order.statusHistory.map((h) => h.status))
+  const reachedIdx = ALL_STATUSES.indexOf(order.status)
   const isCancelled = order.status === "CANCELLED"
-  const trackingUrl = order.trackingNumber && order.carrierName
-    ? (CARRIER_URLS[order.carrierName] ?? null)
-    : null
-
-  const deliveryAddress = order.retailer.addresses[0]
+  const trackUrl = order.trackingNumber && order.carrierName ? CARRIERS[order.carrierName] : null
+  const address = order.retailer.addresses[0]
 
   return (
-    <div className="p-6 max-w-3xl flex flex-col gap-6">
-      <Link href="/orders" className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors w-fit">
-        <ChevronLeft className="w-3.5 h-3.5" /> Back to orders
-      </Link>
-
-      <div className="flex items-start justify-between">
+    <>
+    <style>{`
+      body{font-family:system-ui,sans-serif}
+      .page{padding:24px;max-width:800px}
+      .back-link{display:inline-flex;align-items:center;gap:6px;color:#8888AA;font-size:13px;text-decoration:none;margin-bottom:20px;transition:color .15s}
+      .back-link:hover{color:#F0A3BC}
+      .order-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+      .order-num{font-size:26px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
+      .order-meta{font-size:13px;color:#8888AA;margin:0}
+      .status-badge{display:inline-flex;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:600}
+      .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:16px}
+      .card-head{padding:14px 18px;border-bottom:1px solid rgba(0,0,0,.07);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA}
+      .card-body{padding:18px}
+      .timeline{display:flex;align-items:flex-start;gap:0;padding:4px 0}
+      .tl-step{display:flex;flex-direction:column;align-items:center;flex:1;position:relative}
+      .tl-connector{position:absolute;top:12px;left:50%;width:100%;height:2px;z-index:0}
+      .tl-dot{width:24px;height:24px;border-radius:50%;z-index:1;position:relative;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid}
+      .tl-dot.done{background:#F0A3BC;border-color:#F0A3BC;color:white}
+      .tl-dot.current{background:#F0A3BC;border-color:#F0A3BC;color:white;box-shadow:0 0 0 4px rgba(240,163,188,.25)}
+      .tl-dot.pending{background:white;border-color:#E0E0E0;color:#CCCCCC}
+      .tl-label{font-size:9px;text-align:center;margin-top:6px;line-height:1.3}
+      .tl-label.done{color:#4A4A6A;font-weight:500}
+      .tl-label.current{color:#C4638A;font-weight:700}
+      .tl-label.pending{color:#BBBBCC}
+      .tl-date{font-size:8px;color:#BBBBCC;text-align:center;margin-top:2px}
+      .tracker{background:#E8F8F7;border:1px solid rgba(92,200,197,.3);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+      .tracker-label{font-size:11px;color:#8888AA;margin:0 0 2px}
+      .tracker-num{font-family:monospace;font-size:14px;font-weight:600;color:#3A9E9B;margin:0}
+      .track-btn{padding:7px 14px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+      .track-btn:hover{background:#E88BAA}
+      .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+      .detail-item{padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+      .detail-item:nth-last-child(-n+2){border-bottom:none}
+      .detail-label{font-size:11px;color:#8888AA;margin:0 0 3px}
+      .detail-val{font-size:13px;font-weight:600;color:#1A1A2E;margin:0}
+      .line-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+      .line-item:last-child{border-bottom:none}
+      .line-icon{width:40px;height:40px;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+      .line-name{font-size:13px;font-weight:600;color:#1A1A2E;margin:0 0 2px}
+      .line-meta{font-size:11px;color:#8888AA;margin:0;font-family:monospace}
+      .line-val{margin-left:auto;text-align:right;flex-shrink:0}
+      .line-qty{font-size:12px;color:#8888AA;margin:0 0 2px}
+      .line-total{font-size:14px;font-weight:700;color:#1A1A2E;margin:0}
+      .totals-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;color:#8888AA}
+      .totals-final{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#C4638A;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);margin-top:4px}
+    `}</style>
+    <div className="page">
+      <Link href="/orders" className="back-link">← Back to orders</Link>
+      <div className="order-header">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">{order.orderNumber}</h1>
-          <p className="text-sm text-text-muted mt-0.5">
-            Placed {formatDateTime(order.createdAt)}{order.poReference && ` · PO: ${order.poReference}`}
-          </p>
+          <h1 className="order-num">{order.orderNumber}</h1>
+          <p className="order-meta">Placed {formatDateTime(order.createdAt)}{order.poReference?" · PO: "+order.poReference:""}</p>
         </div>
-        <OrderStatusBadge status={order.status as any} />
+        <span className="status-badge" style={{background:order.status==="DELIVERED"?"#EAFAF3":order.status==="CANCELLED"?"#FFF1F4":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#E8F8F7":"#FDE8EF",color:order.status==="DELIVERED"?"#0EA572":order.status==="CANCELLED"?"#E11D48":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#3A9E9B":"#C4638A"}}>
+          {order.status.replace(/_/g," ")}
+        </span>
       </div>
 
       {!isCancelled && (
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold mb-4">Order Progress</h2>
-          <div className="flex items-start gap-0">
-            {ALL_STATUSES.map((status, idx) => {
-              const reached = reachedStatuses.has(status)
-              const isCurrent = order.status === status
-              const historyEntry = order.statusHistory.find((h) => h.status === status)
-              return (
-                <div key={status} className="flex flex-col items-center flex-1 relative">
-                  {idx < ALL_STATUSES.length - 1 && (
-                    <div className={`absolute top-3 left-1/2 w-full h-0.5 ${reached ? "bg-brand" : "bg-border"}`} />
-                  )}
-                  <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${isCurrent ? "bg-brand border-brand scale-110" : reached ? "bg-brand/20 border-brand" : "bg-bg-elevated border-border"}`}>
-                    {reached && !isCurrent && <div className="w-2 h-2 rounded-full bg-brand" />}
-                    {isCurrent && <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}
+        <div className="card">
+          <div className="card-head">Order Progress</div>
+          <div className="card-body">
+            <div className="timeline">
+              {ALL_STATUSES.map((status, idx) => {
+                const done = idx <= reachedIdx
+                const current = idx === reachedIdx
+                const histEntry = order.statusHistory.find(h => h.status === status)
+                return (
+                  <div key={status} className="tl-step">
+                    {idx < ALL_STATUSES.length - 1 && (
+                      <div className="tl-connector" style={{background:done&&!current?"#F0A3BC":"#E0E0E0"}} />
+                    )}
+                    <div className={"tl-dot "+(current?"current":done?"done":"pending")}>
+                      {done?"✓":""}
+                    </div>
+                    <div className={"tl-label "+(current?"current":done?"done":"pending")}>{STATUS_LABELS[status]}</div>
+                    {histEntry && <div className="tl-date">{formatDate(histEntry.createdAt)}</div>}
                   </div>
-                  <p className={`text-[9px] text-center mt-1.5 leading-tight font-medium ${isCurrent ? "text-brand" : reached ? "text-text-secondary" : "text-text-muted"}`}>
-                    {STATUS_LABELS[status]}
-                  </p>
-                  {historyEntry && <p className="text-[8px] text-text-muted mt-0.5 text-center">{formatDate(historyEntry.createdAt)}</p>}
+                )
+              })}
+            </div>
+            {order.trackingNumber && (
+              <div className="tracker">
+                <div>
+                  <p className="tracker-label">{order.carrierName ?? "Carrier"} tracking</p>
+                  <p className="tracker-num">{order.trackingNumber}</p>
                 </div>
-              )
-            })}
+                {trackUrl ? (
+                  <a href={trackUrl+encodeURIComponent(order.trackingNumber)} target="_blank" rel="noopener noreferrer" className="track-btn">Track ↗</a>
+                ) : (
+                  <button className="track-btn" onClick={()=>{}}>Copy</button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {order.trackingNumber && (
-        <div className="card p-4 flex items-center gap-3">
-          <Truck className="w-4 h-4 text-emerald flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs text-text-muted">{order.carrierName ?? "Carrier"} tracking</p>
-            <p className="text-sm font-mono font-medium text-text-primary">{order.trackingNumber}</p>
+      <div className="card">
+        <div className="card-head">Order Details</div>
+        <div className="card-body">
+          <div className="detail-grid">
+            {[
+              ["Order Number", order.orderNumber],
+              ["Date Placed", formatDate(order.createdAt)],
+              ["PO Reference", order.poReference ?? "—"],
+              ["Status", order.status.replace(/_/g," ")],
+              ...(order.estimatedDelivery ? [["Est. Delivery", formatDate(order.estimatedDelivery)]] : []),
+            ].map(([l,v]) => (
+              <div key={l} className="detail-item">
+                <p className="detail-label">{l}</p>
+                <p className="detail-val">{v}</p>
+              </div>
+            ))}
           </div>
-          {trackingUrl && (
-            <a href={`${trackingUrl}${encodeURIComponent(order.trackingNumber)}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-brand hover:underline">
-              Track <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
         </div>
-      )}
+      </div>
 
-      <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h2 className="text-sm font-semibold">Order Lines ({order.items.length})</h2>
-        </div>
-        <div className="divide-y divide-border">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex items-center gap-4 px-5 py-3">
-              <div className="w-8 h-8 rounded bg-bg-elevated flex items-center justify-center flex-shrink-0">
-                <Package className="w-4 h-4 text-text-muted" />
+      <div className="card">
+        <div className="card-head">Order Lines ({order.items.length})</div>
+        <div className="card-body" style={{paddingBottom:0}}>
+          {order.items.map(item => (
+            <div key={item.id} className="line-item">
+              <div className="line-icon">🎁</div>
+              <div style={{flex:1,minWidth:0}}>
+                <p className="line-name">{item.productName}</p>
+                <p className="line-meta">{item.sku} · {item.product.brand?.name}</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text-primary truncate">{item.productName}</p>
-                <p className="text-xs text-text-muted">{item.sku} · {item.product.brand?.name}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-xs text-text-muted">×{item.quantity}</p>
-                <p className="text-sm font-semibold text-text-primary">{formatCurrencyFromPounds(item.lineTotalPence)}</p>
+              <div className="line-val">
+                <p className="line-qty">×{item.quantity} units</p>
+                <p className="line-total">{formatCurrencyFromPounds(item.lineTotalPence)}</p>
               </div>
             </div>
           ))}
         </div>
-        <div className="border-t border-border px-5 py-4 flex flex-col gap-1.5">
-          <div className="flex justify-between text-xs text-text-secondary">
-            <span>Subtotal (ex. VAT)</span><span>{formatCurrencyFromPounds(order.subtotalPence)}</span>
-          </div>
-          <div className="flex justify-between text-xs text-text-secondary">
-            <span>VAT (20%)</span><span>{formatCurrencyFromPounds(order.vatPence)}</span>
-          </div>
-          <div className="flex justify-between text-sm font-bold text-text-primary pt-1.5 border-t border-border">
-            <span>Total</span><span>{formatCurrencyFromPounds(order.totalPence)}</span>
-          </div>
+        <div style={{padding:"14px 18px",borderTop:"1px solid rgba(0,0,0,.07)"}}>
+          <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrencyFromPounds(order.subtotalPence)}</span></div>
+          <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrencyFromPounds(order.vatPence)}</span></div>
+          <div className="totals-final"><span>Total (inc. VAT)</span><span>{formatCurrencyFromPounds(order.totalPence)}</span></div>
         </div>
       </div>
 
-      {deliveryAddress && (
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold mb-2">Delivery Address</h2>
-          <address className="text-sm text-text-secondary not-italic leading-relaxed">
-            {deliveryAddress.line1}<br />
-            {deliveryAddress.line2 && <>{deliveryAddress.line2}<br /></>}
-            {deliveryAddress.city}{deliveryAddress.county ? `, ${deliveryAddress.county}` : ""}<br />
-            {deliveryAddress.postcode}
-          </address>
-          {order.deliveryNotes && (
-            <p className="text-xs text-text-muted mt-2 border-t border-border pt-2">Note: {order.deliveryNotes}</p>
-          )}
+      {address && (
+        <div className="card">
+          <div className="card-head">Delivery Address</div>
+          <div className="card-body">
+            <p style={{fontSize:13,color:"#4A4A6A",lineHeight:1.8,margin:0}}>
+              {address.line1}<br/>
+              {address.line2 && <>{address.line2}<br/></>}
+              {address.city}{address.county?", "+address.county:""}<br/>
+              <span style={{fontFamily:"monospace",fontSize:12}}>{address.postcode}</span>
+            </p>
+            {order.deliveryNotes && <p style={{fontSize:12,color:"#8888AA",marginTop:10,paddingTop:10,borderTop:"1px solid rgba(0,0,0,.06)"}}>{order.deliveryNotes}</p>}
+          </div>
         </div>
       )}
     </div>
+    </>
   )
 }
