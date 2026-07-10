@@ -138,8 +138,8 @@ export default function StockPage() {
             const unavailable = outOfStock || comingSoon
             return (
               <div key={p.id} className="product-card" style={unavailable?{opacity:.65}:{}}>
-                <div className="product-img">
-                  <span>🎁</span>
+                <div className="product-img" style={{height:"3.5cm",width:"6cm",minWidth:"6cm"}}>
+                  <img src={p.images?.[0]?.url ?? ""} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover",display:p.images?.[0]?.url?"block":"none"}} /><span style={{display:p.images?.[0]?.url?"none":"block"}}>🎁</span>
                   {p.badges?.includes("BEST_SELLER")&&<span className="badge-abs badge-pink">⭐ Best Seller</span>}
                   {p.badges?.includes("NEW")&&!p.badges?.includes("BEST_SELLER")&&<span className="badge-abs badge-teal">✨ New</span>}
                   {p.badges?.includes("EXCLUSIVE")&&<span className="badge-abs" style={{background:"#F3EEFF",color:"#7C3AED",border:"1px solid rgba(124,58,237,.3)",position:"absolute",top:8,left:8,padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700}}>💎 Exclusive</span>}
