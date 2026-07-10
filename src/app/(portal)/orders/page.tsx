@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { formatCurrencyFromPounds, formatDate } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 import Link from "next/link"
 
 const STATUSES = ["ALL","PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED"]
@@ -123,7 +123,7 @@ export default function OrdersPage() {
                 <td className="txt-muted">{formatDate(o.createdAt)}</td>
                 <td style={{fontFamily:"monospace",fontSize:12,color:"#8888AA"}}>{o.poReference??"-"}</td>
                 <td className="txt-secondary">{o.items?.length??0}</td>
-                <td className="fw600">{formatCurrencyFromPounds(o.totalPence)}</td>
+                <td className="fw600">{formatCurrency(o.totalPence)}</td>
                 <td><span className={"badge "+(statusBadge[o.status]??"badge-grey")}>{o.status.replace(/_/g," ")}</span></td>
               </tr>
             ))}

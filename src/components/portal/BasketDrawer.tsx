@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrencyFromPounds } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 
 export function BasketDrawer() {
   const [open, setOpen] = useState(false)
@@ -85,7 +85,7 @@ export function BasketDrawer() {
             <div style={{flex:1,minWidth:0}}>
               <p style={{fontSize:12,fontWeight:600,color:"#1A1A2E",margin:"0 0 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</p>
               <p style={{fontSize:11,color:"#8888AA",fontFamily:"monospace",margin:"0 0 6px"}}>{item.sku}</p>
-              <p style={{fontSize:12,fontWeight:600,color:"#C4638A",margin:0}}>{formatCurrencyFromPounds(item.lineTotalPence)}</p>
+              <p style={{fontSize:12,fontWeight:600,color:"#C4638A",margin:0}}>{formatCurrency(item.lineTotalPence)}</p>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
               <div className="stepper">
@@ -99,9 +99,9 @@ export function BasketDrawer() {
       </div>
       {items.length>0&&(
         <div className="drawer-footer">
-          <div className="summary-row"><span style={{color:"#8888AA"}}>Subtotal (ex. VAT)</span><span style={{fontWeight:500}}>{formatCurrencyFromPounds(subtotal)}</span></div>
-          <div className="summary-row"><span style={{color:"#8888AA"}}>VAT (20%)</span><span style={{color:"#8888AA"}}>{formatCurrencyFromPounds(vat)}</span></div>
-          <div className="summary-total"><span>Total (inc. VAT)</span><span>{formatCurrencyFromPounds(total)}</span></div>
+          <div className="summary-row"><span style={{color:"#8888AA"}}>Subtotal (ex. VAT)</span><span style={{fontWeight:500}}>{formatCurrency(subtotal)}</span></div>
+          <div className="summary-row"><span style={{color:"#8888AA"}}>VAT (20%)</span><span style={{color:"#8888AA"}}>{formatCurrency(vat)}</span></div>
+          <div className="summary-total"><span>Total (inc. VAT)</span><span>{formatCurrency(total)}</span></div>
           <Link href="/checkout" className="checkout-btn" onClick={()=>setOpen(false)}>Proceed to Checkout →</Link>
         </div>
       )}

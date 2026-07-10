@@ -1,7 +1,7 @@
 "use client"
 import { useState, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrencyFromPounds } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 
 const TYPES = ["ALL","BLIND_BOX","FIGURE","PLUSH","ACCESSORY","BUNDLE"]
 
@@ -149,9 +149,9 @@ export default function StockPage() {
                   <p className="product-name">{p.name}</p>
                   <p className="product-sku">{p.sku}</p>
                   <div className="price-grid">
-                    <div className="price-col"><p className="lbl">Unit</p><p className="val">{formatCurrencyFromPounds(p.unitCostPence)}</p></div>
-                    <div className="price-col"><p className="lbl">CDU ×{p.cduSize}</p><p className="val pink">{formatCurrencyFromPounds(cduCost)}</p></div>
-                    <div className="price-col"><p className="lbl">RRP</p><p className="val muted">{formatCurrencyFromPounds(p.rrpPence)}</p></div>
+                    <div className="price-col"><p className="lbl">Unit</p><p className="val">{formatCurrency(p.unitCostPence)}</p></div>
+                    <div className="price-col"><p className="lbl">CDU ×{p.cduSize}</p><p className="val pink">{formatCurrency(cduCost)}</p></div>
+                    <div className="price-col"><p className="lbl">RRP</p><p className="val muted">{formatCurrency(p.rrpPence)}</p></div>
                   </div>
                   <div className="stock-row">
                     <span>Stock</span>

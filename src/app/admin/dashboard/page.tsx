@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
-import { formatCurrencyFromPounds } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import Link from "next/link"
 
 export default async function AdminDashboardPage() {
@@ -57,7 +57,7 @@ export default async function AdminDashboardPage() {
         <div className="db-grid4">
           <div className="db-card">
             <p className="db-label">Revenue this month</p>
-            <p className="db-val">{formatCurrencyFromPounds(thisRevenue)}</p>
+            <p className="db-val">{formatCurrency(thisRevenue)}</p>
             <p className="db-meta" style={{color: growth >= 0 ? "#0EA572" : "#E11D48"}}>{growth >= 0 ? "↑" : "↓"} {Math.abs(growth)}% vs last month</p>
           </div>
           <div className="db-card">
@@ -94,7 +94,7 @@ export default async function AdminDashboardPage() {
                     <tr key={o.id}>
                       <td style={{fontWeight:600,color:"#C4638A"}}>{o.orderNumber}</td>
                       <td style={{color:"#4A4A6A"}}>{o.retailer.businessName}</td>
-                      <td style={{fontWeight:500}}>{formatCurrencyFromPounds(o.totalPence)}</td>
+                      <td style={{fontWeight:500}}>{formatCurrency(o.totalPence)}</td>
                       <td style={{color:"#4A4A6A"}}>{o._count.items}</td>
                       <td><span className="db-badge" style={{background:"#E8F8F7",color:"#3A9E9B"}}>{o.status.replace(/_/g," ")}</span></td>
                     </tr>

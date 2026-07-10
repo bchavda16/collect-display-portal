@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
-import { formatCurrencyFromPounds, formatRelativeDate } from "@/lib/utils"
+import { formatCurrency, formatRelativeDate } from "@/lib/utils"
 import Link from "next/link"
 
 export default async function DashboardPage() {
@@ -110,7 +110,7 @@ export default async function DashboardPage() {
                 <p className="product-mini-brand">{p.brand?.name}</p>
                 <p className="product-mini-name">{p.name}</p>
                 <div className="product-mini-price">
-                  <span style={{color:"#C4638A",fontWeight:600}}>{formatCurrencyFromPounds(p.unitCostPence)}/unit</span>
+                  <span style={{color:"#C4638A",fontWeight:600}}>{formatCurrency(p.unitCostPence)}/unit</span>
                   <span style={{color:p.stockUnits<=10?"#D97706":"#0EA572",fontWeight:600}}>{p.stockUnits} left</span>
                 </div>
               </div>
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
                     <td><Link href={"/orders/"+o.id} style={{color:"#C4638A",fontWeight:600,textDecoration:"none"}}>{o.orderNumber}</Link></td>
                     <td style={{color:"#8888AA"}}>{formatRelativeDate(o.createdAt)}</td>
                     <td style={{color:"#4A4A6A"}}>{o.items.length}</td>
-                    <td style={{fontWeight:600}}>{formatCurrencyFromPounds(o.totalPence)}</td>
+                    <td style={{fontWeight:600}}>{formatCurrency(o.totalPence)}</td>
                     <td><span className="badge" style={{background:statusColors[o.status]?.bg??"#F4F5F7",color:statusColors[o.status]?.color??"#8888AA"}}>{o.status.replace(/_/g," ")}</span></td>
                   </tr>
                 ))}

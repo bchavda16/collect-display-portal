@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { formatCurrencyFromPounds } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import Link from "next/link"
 
 export default function CheckoutPage() {
@@ -118,7 +118,7 @@ export default function CheckoutPage() {
             </div>
             {error && <div className="error-box">{error}</div>}
             <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
-              {loading ? "Placing order…" : "Place Order · "+formatCurrencyFromPounds(total)}
+              {loading ? "Placing order…" : "Place Order · "+formatCurrency(total)}
             </button>
             <p style={{fontSize:11,color:"#8888AA",textAlign:"center",marginTop:12}}>By placing this order you agree to our <a href="#" style={{color:"#F0A3BC"}}>terms of trade</a>.</p>
           </div>
@@ -133,14 +133,14 @@ export default function CheckoutPage() {
                   <p className="line-name">{item.productName}</p>
                   <p className="line-meta">×{item.quantity} units</p>
                 </div>
-                <span className="line-price">{formatCurrencyFromPounds(item.lineTotalPence)}</span>
+                <span className="line-price">{formatCurrency(item.lineTotalPence)}</span>
               </div>
             ))}
           </div>
           <div style={{padding:"14px 20px"}}>
-            <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrencyFromPounds(subtotal)}</span></div>
-            <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrencyFromPounds(vat)}</span></div>
-            <div className="totals-final"><span>Total</span><span>{formatCurrencyFromPounds(total)}</span></div>
+            <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrency(subtotal)}</span></div>
+            <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrency(vat)}</span></div>
+            <div className="totals-final"><span>Total</span><span>{formatCurrency(total)}</span></div>
           </div>
         </div>
       </div>

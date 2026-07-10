@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrencyFromPounds, formatDate } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 
 const STATUSES = ["ALL","PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED"]
 const statusBadge: Record<string,string> = { PLACED:"badge-teal",CONFIRMED:"badge-teal",PROCESSING:"badge-purple",PICKED:"badge-purple",PACKED:"badge-amber",DISPATCHED:"badge-green",OUT_FOR_DELIVERY:"badge-green",DELIVERED:"badge-grey",CANCELLED:"badge-red" }
@@ -139,7 +139,7 @@ export default function AdminOrdersPage() {
                 <td className="txt-secondary">{o.retailer?.businessName}</td>
                 <td className="txt-muted">{formatDate(o.createdAt)}</td>
                 <td className="txt-secondary">{o._count?.items??o.items?.length??0}</td>
-                <td className="fw600">{formatCurrencyFromPounds(o.totalPence)}</td>
+                <td className="fw600">{formatCurrency(o.totalPence)}</td>
                 <td><span className={"badge "+(statusBadge[o.status]??"badge-grey")}>{o.status.replace(/_/g," ")}</span></td>
                 <td><button className="btn-ghost btn-sm" onClick={()=>{setEditing(o);setNewStatus(o.status);setTracking(o.trackingNumber??"");setCarrier(o.carrierName??"");setNote("")}}>Update</button></td>
               </tr>

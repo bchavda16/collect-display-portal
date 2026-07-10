@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import Link from "next/link"
-import { formatCurrencyFromPounds, formatDate, formatDateTime } from "@/lib/utils"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 
 const ALL_STATUSES = ["PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED"]
 const STATUS_LABELS: Record<string,string> = {
@@ -173,15 +173,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               </div>
               <div className="line-val">
                 <p className="line-qty">×{item.quantity} units</p>
-                <p className="line-total">{formatCurrencyFromPounds(item.lineTotalPence)}</p>
+                <p className="line-total">{formatCurrency(item.lineTotalPence)}</p>
               </div>
             </div>
           ))}
         </div>
         <div style={{padding:"14px 18px",borderTop:"1px solid rgba(0,0,0,.07)"}}>
-          <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrencyFromPounds(order.subtotalPence)}</span></div>
-          <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrencyFromPounds(order.vatPence)}</span></div>
-          <div className="totals-final"><span>Total (inc. VAT)</span><span>{formatCurrencyFromPounds(order.totalPence)}</span></div>
+          <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrency(order.subtotalPence)}</span></div>
+          <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrency(order.vatPence)}</span></div>
+          <div className="totals-final"><span>Total (inc. VAT)</span><span>{formatCurrency(order.totalPence)}</span></div>
         </div>
       </div>
 
