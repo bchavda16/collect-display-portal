@@ -60,7 +60,8 @@ export default function StockPage() {
   const products = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const getQty = (p: any) => qtys[p.id] ?? p.cduSize
-  const setQty = (id: string, v: number) => setQtys(q => ({...q, [id]: Math.max(0, v)}))
+  const maxQty = (p: any) => Math.floor(p.stockUnits / p.cduSize) * p.cduSize
+  const setQty = (id: string, v: number, max: number) => setQtys(q => ({...q, [id]: Math.min(Math.max(0, v), max)}))
 
   return (
     <>
@@ -160,11 +161,11 @@ export default function StockPage() {
                   {!unavailable&&(
                     <div className="add-row">
                       <div className="stepper">
-                        <button onClick={()=>setQty(p.id, qty-p.cduSize)}>−</button>
+                        <button onClick={()=>setQty(p.id, qty-p.cduSize, maxQty(p))} disabled={qty<=p.cduSize}>−</button>
                         <span>{qty}</span>
-                        <button onClick={()=>setQty(p.id, qty+p.cduSize)}>+</button>
+                        <button onClick={()=>setQty(p.id, qty+p.cduSize, maxQty(p))} disabled={qty>=maxQty(p)}>+</button>
                       </div>
-                      <button className={"add-btn"+(isAdded?" done":"")} onClick={()=>handleAdd(p.id, qty, p.name)} disabled={isAdded}>
+                      <button className={"add-btn"+(isAdded?" done":"")} onClick={()=>handleAdd(p.id, qty, p.name)} disabled={isAdded || qty > p.stockUnits}>
                         {isAdded ? "✓ Added!" : "🛒 Add to basket"}
                       </button>
                     </div>
