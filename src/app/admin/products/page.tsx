@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrencyFromPounds } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 
 export default function AdminProductsPage() {
   const qc = useQueryClient()
@@ -107,9 +107,9 @@ export default function AdminProductsPage() {
                 </td>
                 <td style={{...s.td,fontFamily:"monospace",fontSize:12,color:"#8888AA"}}>{p.sku}</td>
                 <td style={{...s.td,color:"#4A4A6A"}}>{p.productType?.replace(/_/g," ")}</td>
-                <td style={{...s.td,fontWeight:600}}>{formatCurrencyFromPounds(p.unitCostPence)}</td>
+                <td style={{...s.td,fontWeight:600}}>{formatCurrency(p.unitCostPence)}</td>
                 <td style={{...s.td,color:"#4A4A6A"}}>×{p.cduSize}</td>
-                <td style={{...s.td,color:"#8888AA"}}>{formatCurrencyFromPounds(p.rrpPence)}</td>
+                <td style={{...s.td,color:"#8888AA"}}>{formatCurrency(p.rrpPence)}</td>
                 <td style={s.td}>
                   {editStock?.id===p.id ? (
                     <div style={{display:"flex",alignItems:"center",gap:4}}>
