@@ -78,7 +78,8 @@ export default function StockPage() {
       .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
       .product-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:14px;overflow:hidden;transition:all .2s;cursor:default}
       .product-card:hover{box-shadow:0 8px 24px rgba(240,163,188,.2);border-color:rgba(240,163,188,.5);transform:translateY(-2px)}
-      .product-img{height:130px;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative}
+      .product-img{height:99px;width:100%;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;overflow:hidden}
+  .product-img img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
       .product-body{padding:14px}
       .brand-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#3A9E9B;margin:0 0 4px}
       .product-name{font-size:13px;font-weight:600;color:#1A1A2E;line-height:1.35;margin:0 0 4px}
@@ -138,8 +139,8 @@ export default function StockPage() {
             const unavailable = outOfStock || comingSoon
             return (
               <div key={p.id} className="product-card" style={unavailable?{opacity:.65}:{}}>
-                <div className="product-img" style={{height:"3.5cm",width:"6cm",minWidth:"6cm"}}>
-                  <img src={p.images?.[0]?.url ?? ""} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover",display:p.images?.[0]?.url?"block":"none"}} /><span style={{display:p.images?.[0]?.url?"none":"block"}}>🎁</span>
+                <div className="product-img">
+                  {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",inset:0}} /> : <span>🎁</span>}
                   {p.badges?.includes("BEST_SELLER")&&<span className="badge-abs badge-pink">⭐ Best Seller</span>}
                   {p.badges?.includes("NEW")&&!p.badges?.includes("BEST_SELLER")&&<span className="badge-abs badge-teal">✨ New</span>}
                   {p.badges?.includes("EXCLUSIVE")&&<span className="badge-abs" style={{background:"#F3EEFF",color:"#7C3AED",border:"1px solid rgba(124,58,237,.3)",position:"absolute",top:8,left:8,padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700}}>💎 Exclusive</span>}
