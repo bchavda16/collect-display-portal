@@ -1,7 +1,11 @@
 "use client"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { formatCurrency } from "@/lib/utils"
+
+// Image dimensions: 6cm x 3.5cm ~ 170px x 99px display
+const IMG_W = 170
+const IMG_H = 99
 
 export default function AdminProductsPage() {
   const qc = useQueryClient()
@@ -12,6 +16,9 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<any>(null)
   const [form, setForm] = useState({name:"",sku:"",brandName:"",productType:"BLIND_BOX",unitCost:"",cduSize:"6",rrp:"",stockUnits:"0"})
   const [editForm, setEditForm] = useState({name:"",unitCost:"",rrp:"",cduSize:"",description:""})
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const [imgPreview, setImgPreview] = useState<string|null>(null)
+  const imgRef = useRef<HTMLInputElement>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-products", search, page],
@@ -26,7 +33,7 @@ export default function AdminProductsPage() {
       const r = await fetch("/api/products/"+id, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
       return r.json()
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-products"]}); setEditStock(null); setEditingProduct(null) },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-products"]}); setEditStock(null); setEditingProduct(null); setImgPreview(null) },
   })
 
   const createMutation = useMutation({
@@ -37,6 +44,18 @@ export default function AdminProductsPage() {
     onSuccess: () => { qc.invalidateQueries({queryKey:["admin-products"]}); setShowCreate(false); setForm({name:"",sku:"",brandName:"",productType:"BLIND_BOX",unitCost:"",cduSize:"6",rrp:"",stockUnits:"0"}) },
   })
 
+  const handleImageUpload = async (file: File, productId: string) => {
+    setUploadingImg(true)
+    const fd = new FormData()
+    fd.append("image", file)
+    fd.append("productId", productId)
+    const r = await fetch("/api/products/upload", { method:"POST", body: fd })
+    const d = await r.json()
+    setUploadingImg(false)
+    if (d.url) { setImgPreview(d.url); qc.invalidateQueries({queryKey:["admin-products"]}) }
+    return d
+  }
+
   const products = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const f = (k: string) => (e: any) => setForm(prev => ({...prev, [k]: e.target.value}))
@@ -44,13 +63,8 @@ export default function AdminProductsPage() {
 
   const openEdit = (p: any) => {
     setEditingProduct(p)
-    setEditForm({
-      name: p.name,
-      unitCost: (p.unitCostPence / 100).toFixed(2),
-      rrp: (p.rrpPence / 100).toFixed(2),
-      cduSize: String(p.cduSize),
-      description: p.description ?? "",
-    })
+    setImgPreview(p.images?.[0]?.url ?? null)
+    setEditForm({ name: p.name, unitCost: (p.unitCostPence/100).toFixed(2), rrp: (p.rrpPence/100).toFixed(2), cduSize: String(p.cduSize), description: p.description ?? "" })
   }
 
   const s: Record<string,any> = {
@@ -66,7 +80,7 @@ export default function AdminProductsPage() {
     th: {background:"#F4F5F7",fontSize:10,fontWeight:600,textTransform:"uppercase" as const,letterSpacing:".06em",color:"#8888AA",padding:"10px 16px",textAlign:"left" as const,borderBottom:"1px solid rgba(0,0,0,.08)"},
     td: {padding:"12px 16px",fontSize:13,borderBottom:"1px solid rgba(0,0,0,.06)",verticalAlign:"middle" as const},
     overlay: {position:"fixed" as const,inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(2px)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
-    modal: {background:"white",borderRadius:16,padding:28,maxWidth:520,width:"100%",maxHeight:"90vh",overflowY:"auto" as const,boxShadow:"0 20px 60px rgba(0,0,0,.15)"},
+    modal: {background:"white",borderRadius:16,padding:28,maxWidth:560,width:"100%",maxHeight:"90vh",overflowY:"auto" as const,boxShadow:"0 20px 60px rgba(0,0,0,.15)"},
     modalTitle: {fontSize:18,fontWeight:700,color:"#1A1A2E",margin:"0 0 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},
     sLabel: {fontSize:10,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".08em",color:"#8888AA",margin:"0 0 12px",paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,.07)"},
     grid2: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16},
@@ -77,6 +91,58 @@ export default function AdminProductsPage() {
     btnRow: {display:"flex",gap:10,marginTop:24},
     inputSm: {width:72,padding:"4px 8px",border:"1.5px solid #F0A3BC",borderRadius:6,fontSize:13,color:"#1A1A2E",outline:"none",textAlign:"center" as const},
   }
+
+  // Image upload zone component
+  const ImageUploadZone = ({ productId }: { productId: string }) => (
+    <div style={{marginBottom:20}}>
+      <p style={s.sLabel}>Product Image</p>
+      <p style={{fontSize:11,color:"#8888AA",margin:"0 0 10px"}}>Display size: 6cm × 3.5cm · Max 5MB · JPG, PNG or WebP</p>
+      <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+        {/* Preview */}
+        <div style={{
+          width:`${IMG_W}px`,height:`${IMG_H}px`,
+          border:"2px dashed rgba(0,0,0,.15)",borderRadius:10,
+          background:imgPreview?"transparent":"#FAFBFC",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          overflow:"hidden",flexShrink:0,position:"relative" as const,cursor:"pointer"
+        }} onClick={()=>imgRef.current?.click()}>
+          {imgPreview ? (
+            <img src={imgPreview} alt="Product" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+          ) : (
+            <div style={{textAlign:"center",padding:8}}>
+              <div style={{fontSize:24,marginBottom:4}}>🖼️</div>
+              <div style={{fontSize:11,color:"#8888AA"}}>Click to upload</div>
+              <div style={{fontSize:10,color:"#BBBBCC",marginTop:2}}>6cm × 3.5cm</div>
+            </div>
+          )}
+          {uploadingImg && (
+            <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div style={{fontSize:12,color:"#F0A3BC",fontWeight:600}}>Uploading…</div>
+            </div>
+          )}
+        </div>
+        <div style={{flex:1}}>
+          <button style={{...s.btnGhost,marginBottom:8,width:"100%",justifyContent:"center"}} onClick={()=>imgRef.current?.click()} disabled={uploadingImg}>
+            {imgPreview ? "Change Image" : "Upload Image"}
+          </button>
+          {imgPreview && (
+            <button style={{...s.btnSm,width:"100%",justifyContent:"center",color:"#E11D48",borderColor:"rgba(225,29,72,.2)"}} onClick={()=>setImgPreview(null)}>
+              Remove
+            </button>
+          )}
+          <p style={{fontSize:11,color:"#8888AA",marginTop:8,lineHeight:1.5}}>Image will display at 6cm wide × 3.5cm tall on product cards.</p>
+        </div>
+      </div>
+      <input ref={imgRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:"none"}}
+        onChange={async e => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          const preview = URL.createObjectURL(file)
+          setImgPreview(preview)
+          await handleImageUpload(file, productId)
+        }} />
+    </div>
+  )
 
   return (
     <div style={s.page}>
@@ -94,13 +160,20 @@ export default function AdminProductsPage() {
       <div style={s.card}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead>
-            <tr>{["Product","SKU","Type","Unit Cost","CDU","RRP","Stock","Status","Actions"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
+            <tr>{["Image","Product","SKU","Type","Unit Cost","CDU","RRP","Stock","Status","Actions"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={9} style={{...s.td,textAlign:"center",color:"#8888AA",padding:32}}>Loading…</td></tr>
-            : products.length===0 ? <tr><td colSpan={9} style={{...s.td,textAlign:"center",color:"#8888AA",padding:48}}>No products found</td></tr>
+            {isLoading ? <tr><td colSpan={10} style={{...s.td,textAlign:"center",color:"#8888AA",padding:32}}>Loading…</td></tr>
+            : products.length===0 ? <tr><td colSpan={10} style={{...s.td,textAlign:"center",color:"#8888AA",padding:48}}>No products found</td></tr>
             : products.map((p: any) => (
               <tr key={p.id}>
+                <td style={s.td}>
+                  <div style={{width:`${IMG_W*0.5}px`,height:`${IMG_H*0.5}px`,borderRadius:6,overflow:"hidden",background:"#F4F5F7",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    {p.images?.[0]?.url ? (
+                      <img src={p.images[0].url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                    ) : <span style={{fontSize:20}}>🎁</span>}
+                  </div>
+                </td>
                 <td style={s.td}>
                   <div style={{fontWeight:600,color:"#1A1A2E",marginBottom:2}}>{p.name}</div>
                   <div style={{fontSize:11,color:"#8888AA"}}>{p.brand?.name}</div>
@@ -148,24 +221,26 @@ export default function AdminProductsPage() {
 
       {/* EDIT PRODUCT MODAL */}
       {editingProduct && (
-        <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&setEditingProduct(null)}>
+        <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&(setEditingProduct(null),setImgPreview(null))}>
           <div style={s.modal}>
             <div style={s.modalTitle}>
               <div>
                 <div style={{fontSize:16}}>Edit Product</div>
                 <div style={{fontSize:12,fontWeight:400,color:"#8888AA",marginTop:2,fontFamily:"monospace"}}>{editingProduct.sku}</div>
               </div>
-              <button onClick={()=>setEditingProduct(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0,lineHeight:1}}>×</button>
+              <button onClick={()=>{setEditingProduct(null);setImgPreview(null)}} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0,lineHeight:1}}>×</button>
             </div>
 
+            <ImageUploadZone productId={editingProduct.id} />
+
             <p style={s.sLabel}>Product Details</p>
-            <div style={{...s.fGroup,marginBottom:16}}>
+            <div style={{...s.fGroup,marginBottom:14}}>
               <label style={s.iLabel}>Product Name</label>
               <input style={s.input} value={editForm.name} onChange={ef("name")} />
             </div>
             <div style={{...s.fGroup,marginBottom:16}}>
               <label style={s.iLabel}>Description (optional)</label>
-              <textarea style={{...s.input,resize:"none" as const,height:70}} value={editForm.description} onChange={ef("description")} placeholder="Product description…" />
+              <textarea style={{...s.input,resize:"none" as const,height:60}} value={editForm.description} onChange={ef("description")} placeholder="Product description…" />
             </div>
 
             <p style={{...s.sLabel,marginTop:8}}>Pricing</p>
@@ -173,7 +248,7 @@ export default function AdminProductsPage() {
               <div style={s.fGroup}>
                 <label style={s.iLabel}>Unit Cost (£)</label>
                 <input style={s.input} type="number" step="0.01" value={editForm.unitCost} onChange={ef("unitCost")} />
-                <div style={{fontSize:11,color:"#8888AA",marginTop:4}}>CDU cost: £{editForm.unitCost && editForm.cduSize ? (parseFloat(editForm.unitCost||"0") * parseInt(editForm.cduSize||"1")).toFixed(2) : "—"}</div>
+                <div style={{fontSize:11,color:"#8888AA",marginTop:4}}>CDU cost: £{(parseFloat(editForm.unitCost||"0")*parseInt(editForm.cduSize||"1")).toFixed(2)}</div>
               </div>
               <div style={s.fGroup}>
                 <label style={s.iLabel}>RRP (£)</label>
@@ -186,16 +261,14 @@ export default function AdminProductsPage() {
             </div>
 
             <div style={s.btnRow}>
-              <button style={{...s.btnGhost,flex:1}} onClick={()=>setEditingProduct(null)}>Cancel</button>
+              <button style={{...s.btnGhost,flex:1}} onClick={()=>{setEditingProduct(null);setImgPreview(null)}}>Cancel</button>
               <button style={{...s.btnPink,flex:1}} disabled={updateMutation.isPending} onClick={()=>updateMutation.mutate({
-                id: editingProduct.id,
-                name: editForm.name,
-                description: editForm.description || null,
-                unitCostPence: Math.round(parseFloat(editForm.unitCost) * 100),
-                rrpPence: Math.round(parseFloat(editForm.rrp) * 100),
-                cduSize: parseInt(editForm.cduSize),
+                id:editingProduct.id, name:editForm.name, description:editForm.description||null,
+                unitCostPence:Math.round(parseFloat(editForm.unitCost)*100),
+                rrpPence:Math.round(parseFloat(editForm.rrp)*100),
+                cduSize:parseInt(editForm.cduSize),
               })}>
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                {updateMutation.isPending?"Saving…":"Save Changes"}
               </button>
             </div>
           </div>
@@ -207,6 +280,7 @@ export default function AdminProductsPage() {
         <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&setShowCreate(false)}>
           <div style={s.modal}>
             <div style={s.modalTitle}>Add Product <button onClick={()=>setShowCreate(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0,lineHeight:1}}>×</button></div>
+            <p style={{fontSize:12,color:"#8888AA",margin:"0 0 16px",background:"#F4F5F7",borderRadius:8,padding:"8px 12px"}}>💡 Create the product first, then use Edit to upload an image.</p>
             <div style={s.grid2}>
               <div style={{...s.fGroup,gridColumn:"1/-1"}}><label style={s.iLabel}>Product Name</label><input style={s.input} value={form.name} onChange={f("name")} placeholder="e.g. Labubu Series 1" /></div>
               <div style={s.fGroup}><label style={s.iLabel}>SKU</label><input style={s.input} value={form.sku} onChange={f("sku")} placeholder="e.g. PM-LBB-001" /></div>
