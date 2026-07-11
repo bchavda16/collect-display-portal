@@ -23,6 +23,12 @@ export default async function DashboardPage() {
     }),
   ])
 
+  const spendToDate = await prisma.order.aggregate({
+    _sum: { totalPence: true },
+    where: { retailerId: retailer?.id ?? "", status: { not: "CANCELLED" } },
+  })
+  const totalSpend = spendToDate._sum.totalPence ?? 0
+
   const activeOrders = retailer?.orders.filter(o => !["DELIVERED","CANCELLED"].includes(o.status)) ?? []
   const totalUnits = activeOrders.reduce((s, o) => s + o.items.reduce((ss, i) => ss + i.quantity, 0), 0)
   const lastOrder = retailer?.orders[0]
@@ -83,6 +89,7 @@ export default async function DashboardPage() {
           {label:"Active Orders",val:String(activeOrders.length),sub:"in progress"},
           {label:"Units on Order",val:String(totalUnits),sub:"across active orders"},
           {label:"Last Order",val:lastOrder?formatRelativeDate(lastOrder.createdAt):"—",sub:lastOrder?.orderNumber??"No orders yet"},
+          {label:"Spend to Date",val:"£"+(totalSpend/100).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2}),sub:"inc. VAT, all orders"},
         ].map(c=>(
           <div key={c.label} className="stat-card">
             <p className="stat-label">{c.label}</p>
