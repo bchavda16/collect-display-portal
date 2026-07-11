@@ -14,10 +14,7 @@ export default async function DashboardPage() {
   })
 
   const [announcements, latestProducts] = await Promise.all([
-    prisma.announcement.findMany({
-      where: { isActive: true, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
-      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }], take: 3,
-    }),
+    Promise.resolve([]),
     prisma.product.findMany({
       where: { status: { in: ["ACTIVE", "LOW_STOCK"] } },
       orderBy: { createdAt: "desc" },
@@ -86,7 +83,6 @@ export default async function DashboardPage() {
           {label:"Active Orders",val:String(activeOrders.length),sub:"in progress"},
           {label:"Units on Order",val:String(totalUnits),sub:"across active orders"},
           {label:"Last Order",val:lastOrder?formatRelativeDate(lastOrder.createdAt):"—",sub:lastOrder?.orderNumber??"No orders yet"},
-          {label:"Credit Limit",val:retailer?.creditLimitPence?"£"+(retailer.creditLimitPence/100).toFixed(2):"—",sub:retailer?.paymentTerms?.replace(/_/g," ")??""},
         ].map(c=>(
           <div key={c.label} className="stat-card">
             <p className="stat-label">{c.label}</p>
@@ -123,7 +119,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid-3-1">
+      <div>
         <div>
           <div className="section-head">
             <span>Recent Orders</span>
@@ -151,17 +147,6 @@ export default async function DashboardPage() {
             <Link href="/stock" className="btn-pink">📦 Browse Stock</Link>
             <Link href="/orders" className="btn-ghost">📋 My Orders</Link>
           </div>
-        </div>
-        <div>
-          <div className="section-head">Announcements</div>
-          {announcements.length===0?(
-            <div className="card card-pad"><p style={{fontSize:13,color:"#8888AA",textAlign:"center",margin:0}}>No announcements</p></div>
-          ):announcements.map((a,i)=>(
-            <div key={a.id} className={"annc-card"+(a.type==="PROMO"?" pink":a.type==="WARNING"?" amber":"")}>
-              <p className="annc-title">{a.title}</p>
-              <p className="annc-body">{a.content}</p>
-            </div>
-          ))}
         </div>
       </div>
     </div>
