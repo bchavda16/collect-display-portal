@@ -49,10 +49,19 @@ export async function POST(req: NextRequest) {
 
   const { productId, quantity } = await req.json()
 
+  const product = await prisma.product.findUnique({ where: { id: productId }, select: { stockUnits: true } })
+  if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 })
+
+  const existing = await prisma.savedBasketItem.findUnique({ where: { retailerId_productId: { retailerId, productId } } })
+  const currentQty = existing?.quantity ?? 0
+  const newQty = Math.min(currentQty + quantity, product.stockUnits)
+
+  if (newQty <= 0) return NextResponse.json({ error: "No stock available" }, { status: 400 })
+
   await prisma.savedBasketItem.upsert({
     where: { retailerId_productId: { retailerId, productId } },
-    update: { quantity: { increment: quantity } },
-    create: { retailerId, productId, quantity },
+    update: { quantity: newQty },
+    create: { retailerId, productId, quantity: newQty },
   })
 
   return NextResponse.json(await buildBasketSummary(retailerId))
@@ -69,7 +78,10 @@ export async function PATCH(req: NextRequest) {
   if (quantity <= 0) {
     await prisma.savedBasketItem.delete({ where: { id: itemId } })
   } else {
-    await prisma.savedBasketItem.update({ where: { id: itemId }, data: { quantity } })
+    // Cap at available stock
+    const item = await prisma.savedBasketItem.findUnique({ where: { id: itemId }, include: { product: { select: { stockUnits: true } } } })
+    const cappedQty = item ? Math.min(quantity, item.product.stockUnits) : quantity
+    await prisma.savedBasketItem.update({ where: { id: itemId }, data: { quantity: cappedQty } })
   }
 
   return NextResponse.json(await buildBasketSummary(retailerId))
