@@ -81,9 +81,6 @@ export default function AccountPage() {
               {[["Business Name",account.businessName],["Email",account.email],["VAT Number",account.vatNumber??"—"]].map(([l,v])=>(
                 <div key={l} className="detail-row"><span className="detail-label">{l}</span><span className="fw600">{v}</span></div>
               ))}
-              <div className="detail-row"><span className="detail-label">Pricing Tier</span><span className={"badge "+(tierBadge[account.pricingTier]??"badge-grey")}>{account.pricingTier}</span></div>
-              <div className="detail-row"><span className="detail-label">Payment Terms</span><span className="fw600">{account.paymentTerms?.replace(/_/g," ")}</span></div>
-              {account.creditLimitPence && <div className="detail-row"><span className="detail-label">Credit Limit</span><span className="fw600">£{(account.creditLimitPence/100).toFixed(2)}</span></div>}
             </div>
             <div className="row-between mb8"><h2 className="fw600 txt-primary" style={{fontSize:14,margin:0}}>Contact</h2>{!editing&&<button className="btn-ghost btn-sm" onClick={()=>{setEditing(true);setContactName(account.contactName);setPhone(account.phone??"")}}>Edit</button>}</div>
             <div className="card card-pad">
