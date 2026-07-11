@@ -98,7 +98,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <p className="order-meta">Placed {formatDateTime(order.createdAt)}{order.poReference?" · PO: "+order.poReference:""}</p>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <OrderExportButton orderNumber={order.orderNumber} items={order.items.map(i=>({productName:i.productName,sku:i.sku,quantity:i.quantity,unitCostPence:i.unitCostPence,lineTotalPence:i.lineTotalPence}))} />
+          <OrderExportButton orderNumber={order.orderNumber} items={order.items.map(i=>({productName:i.productName,sku:i.sku,quantity:i.quantity,unitCostPence:i.unitCostPence,lineTotalPence:i.lineTotalPence,rrpPence:i.product?.rrpPence}))} />
           <span className="status-badge" style={{background:order.status==="DELIVERED"?"#EAFAF3":order.status==="CANCELLED"?"#FFF1F4":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#E8F8F7":"#FDE8EF",color:order.status==="DELIVERED"?"#0EA572":order.status==="CANCELLED"?"#E11D48":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#3A9E9B":"#C4638A"}}>
           {order.status.replace(/_/g," ")}
           </span>

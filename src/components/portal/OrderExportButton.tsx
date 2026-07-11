@@ -7,6 +7,7 @@ interface OrderItem {
   quantity: number
   unitCostPence: number
   lineTotalPence: number
+  rrpPence?: number
 }
 
 interface Props {
@@ -22,19 +23,19 @@ export function OrderExportButton({ orderNumber, items }: Props) {
       "SKU Number": item.sku,
       "Quantity": item.quantity,
       "Unit Price (£)": (item.unitCostPence / 100).toFixed(2),
+      "Retail Price / RRP (£)": item.rrpPence ? (item.rrpPence / 100).toFixed(2) : "—",
       "Line Total (£)": (item.lineTotalPence / 100).toFixed(2),
     }))
 
     const ws = XLSX.utils.json_to_sheet(rows)
-
-    // Set column widths
     ws["!cols"] = [
-      { wch: 14 }, // Order Number
-      { wch: 40 }, // Product Name
-      { wch: 16 }, // SKU
-      { wch: 10 }, // Quantity
-      { wch: 14 }, // Unit Price
-      { wch: 14 }, // Line Total
+      { wch: 14 },
+      { wch: 40 },
+      { wch: 16 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 20 },
+      { wch: 14 },
     ]
 
     const wb = XLSX.utils.book_new()
@@ -50,8 +51,8 @@ export function OrderExportButton({ orderNumber, items }: Props) {
       fontSize:13,fontWeight:500,color:"#1A1A2E",cursor:"pointer",
       transition:"all .15s",
     }}
-    onMouseEnter={e=>(e.currentTarget.style.borderColor="#F0A3BC",e.currentTarget.style.color="#C4638A")}
-    onMouseLeave={e=>(e.currentTarget.style.borderColor="rgba(0,0,0,.12)",e.currentTarget.style.color="#1A1A2E")}
+    onMouseEnter={e=>{e.currentTarget.style.borderColor="#F0A3BC";e.currentTarget.style.color="#C4638A"}}
+    onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,.12)";e.currentTarget.style.color="#1A1A2E"}}
     >
       📥 Export to Excel
     </button>
