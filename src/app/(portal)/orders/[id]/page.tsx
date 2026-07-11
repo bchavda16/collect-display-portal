@@ -4,10 +4,10 @@ import prisma from "@/lib/prisma"
 import Link from "next/link"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 
-const ALL_STATUSES = ["PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED"]
+const ALL_STATUSES = ["PLACED","CONFIRMED","PACKED","DISPATCHED","DELIVERED"]
 const STATUS_LABELS: Record<string,string> = {
-  PLACED:"Placed",CONFIRMED:"Confirmed",PROCESSING:"Processing",PICKED:"Picked",
-  PACKED:"Packed",DISPATCHED:"Dispatched",OUT_FOR_DELIVERY:"Out for Delivery",DELIVERED:"Delivered"
+  PLACED:"Placed",CONFIRMED:"Confirmed",PACKED:"Packed",
+  DISPATCHED:"Dispatched",DELIVERED:"Delivered"
 }
 const CARRIERS: Record<string,string> = {
   "Royal Mail":"https://www.royalmail.com/track-your-item#/tracking-results/",
@@ -166,7 +166,6 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         <div className="card-body" style={{paddingBottom:0}}>
           {order.items.map(item => (
             <div key={item.id} className="line-item">
-              <div className="line-icon">🎁</div>
               <div style={{flex:1,minWidth:0}}>
                 <p className="line-name">{item.productName}</p>
                 <p className="line-meta">{item.sku} · {item.product.brand?.name}</p>

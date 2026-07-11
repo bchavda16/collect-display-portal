@@ -22,7 +22,7 @@ export default async function DashboardPage() {
       where: { status: { in: ["ACTIVE", "LOW_STOCK"] } },
       orderBy: { createdAt: "desc" },
       take: 3,
-      include: { brand: true },
+      include: { brand: true, images: { take: 1 } },
     }),
   ])
 
