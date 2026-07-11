@@ -66,7 +66,7 @@ export default async function DashboardPage() {
       .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
       .product-mini{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;overflow:hidden;transition:all .2s;text-decoration:none;display:block}
       .product-mini:hover{box-shadow:0 4px 16px rgba(240,163,188,.2);border-color:rgba(240,163,188,.4);transform:translateY(-2px)}
-      .product-mini-img{height:100px;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:36px}
+      .product-mini-img{height:175px;width:100%;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;position:relative}
       .product-mini-body{padding:12px}
       .product-mini-brand{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#3A9E9B;margin:0 0 3px}
       .product-mini-name{font-size:12px;font-weight:600;color:#1A1A2E;margin:0 0 6px;line-height:1.3}
@@ -105,7 +105,11 @@ export default async function DashboardPage() {
         <div className="grid3">
           {latestProducts.map(p=>(
             <Link key={p.id} href="/stock" className="product-mini">
-              <div className="product-mini-img">🎁</div>
+              <div className="product-mini-img">
+                {p.images?.[0]?.url
+                  ? <img src={p.images[0].url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",inset:0}} />
+                  : <span>🎁</span>}
+              </div>
               <div className="product-mini-body">
                 <p className="product-mini-brand">{p.brand?.name}</p>
                 <p className="product-mini-name">{p.name}</p>
