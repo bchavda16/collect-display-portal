@@ -81,7 +81,7 @@ export function BasketDrawer() {
           </div>
         ) : items.map((item: any) => (
           <div key={item.id} className="basket-item">
-            <div style={{width:44,height:44,background:"#F4F5F7",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>🎁</div>
+            
             <div style={{flex:1,minWidth:0}}>
               <p style={{fontSize:12,fontWeight:600,color:"#1A1A2E",margin:"0 0 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</p>
               <p style={{fontSize:11,color:"#8888AA",fontFamily:"monospace",margin:"0 0 6px"}}>{item.sku}</p>
