@@ -1,20 +1,29 @@
 "use client"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 
 const STATUSES = ["ALL","PLACED","CONFIRMED","PROCESSING","PICKED","PACKED","DISPATCHED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED"]
-const statusBadge: Record<string,string> = { PLACED:"badge-teal",CONFIRMED:"badge-teal",PROCESSING:"badge-purple",PICKED:"badge-purple",PACKED:"badge-amber",DISPATCHED:"badge-green",OUT_FOR_DELIVERY:"badge-green",DELIVERED:"badge-grey",CANCELLED:"badge-red" }
+const STATUS_COLORS: Record<string,{bg:string;color:string}> = {
+  PLACED:{bg:"#E8F8F7",color:"#3A9E9B"}, CONFIRMED:{bg:"#E8F8F7",color:"#3A9E9B"},
+  PROCESSING:{bg:"#F3EEFF",color:"#7C3AED"}, PICKED:{bg:"#F3EEFF",color:"#7C3AED"},
+  PACKED:{bg:"#FEF3C7",color:"#D97706"}, DISPATCHED:{bg:"#EAFAF3",color:"#0EA572"},
+  OUT_FOR_DELIVERY:{bg:"#EAFAF3",color:"#0EA572"}, DELIVERED:{bg:"#F4F5F7",color:"#8888AA"},
+  CANCELLED:{bg:"#FFF1F4",color:"#E11D48"},
+}
 
 export default function AdminOrdersPage() {
   const qc = useQueryClient()
   const [status, setStatus] = useState("ALL")
   const [page, setPage] = useState(1)
+  const [expanded, setExpanded] = useState<string|null>(null)
   const [editing, setEditing] = useState<any>(null)
   const [newStatus, setNewStatus] = useState("")
   const [tracking, setTracking] = useState("")
   const [carrier, setCarrier] = useState("")
   const [note, setNote] = useState("")
+  const [editingItem, setEditingItem] = useState<{id:string;unitCost:string;quantity:string}|null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string|null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-orders", status, page],
@@ -24,146 +33,291 @@ export default function AdminOrdersPage() {
     },
   })
 
+  const { data: orderDetail, refetch: refetchDetail } = useQuery({
+    queryKey: ["order-detail", expanded],
+    queryFn: async () => {
+      if (!expanded) return null
+      const r = await fetch("/api/orders/"+expanded); return r.json()
+    },
+    enabled: !!expanded,
+  })
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...body }: any) => {
       const r = await fetch("/api/orders/"+id, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
       return r.json()
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-orders"]}); setEditing(null) },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-orders"]}); refetchDetail(); setEditing(null) },
+  })
+
+  const editItemMutation = useMutation({
+    mutationFn: async ({ orderId, itemId, unitCostPence, quantity }: any) => {
+      const r = await fetch("/api/orders/"+orderId+"/items", {
+        method:"PATCH", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ itemId, unitCostPence, quantity })
+      })
+      return r.json()
+    },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-orders"]}); refetchDetail(); setEditingItem(null) },
+  })
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async ({ orderId, itemId }: any) => {
+      const r = await fetch("/api/orders/"+orderId+"/items", {
+        method:"DELETE", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ itemId })
+      })
+      return r.json()
+    },
+    onSuccess: (d) => {
+      if (d.error) { alert(d.error); return }
+      qc.invalidateQueries({queryKey:["admin-orders"]}); refetchDetail(); setDeleteConfirm(null)
+    },
   })
 
   const orders = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
 
+  const s: Record<string,any> = {
+    page: {padding:24,fontFamily:"system-ui,sans-serif"},
+    title: {fontSize:22,fontWeight:700,color:"#1A1A2E",margin:"0 0 4px"},
+    sub: {fontSize:13,color:"#8888AA",margin:"0 0 20px"},
+    th: {background:"#F4F5F7",fontSize:10,fontWeight:600,textTransform:"uppercase" as const,letterSpacing:".06em",color:"#8888AA",padding:"10px 16px",textAlign:"left" as const,borderBottom:"1px solid rgba(0,0,0,.08)"},
+    td: {padding:"12px 16px",fontSize:13,borderBottom:"1px solid rgba(0,0,0,.06)",verticalAlign:"middle" as const},
+    overlay: {position:"fixed" as const,inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(2px)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
+    modal: {background:"white",borderRadius:16,padding:28,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto" as const,boxShadow:"0 20px 60px rgba(0,0,0,.15)"},
+    input: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",boxSizing:"border-box" as const,background:"white"},
+    select: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",background:"white"},
+    inputSm: {padding:"5px 8px",border:"1.5px solid #F0A3BC",borderRadius:6,fontSize:12,color:"#1A1A2E",outline:"none",width:80,textAlign:"center" as const},
+    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"9px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    btnGhost: {display:"inline-flex",alignItems:"center",padding:"7px 14px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
+    btnSm: {display:"inline-flex",alignItems:"center",gap:4,padding:"4px 10px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:6,fontSize:12,fontWeight:500,cursor:"pointer"},
+    btnDanger: {display:"inline-flex",alignItems:"center",padding:"4px 10px",background:"white",color:"#E11D48",border:"1px solid rgba(225,29,72,.2)",borderRadius:6,fontSize:12,fontWeight:500,cursor:"pointer"},
+  }
+
+  const chipStyle = (active: boolean) => ({
+    padding:"5px 12px",borderRadius:99,fontSize:12,fontWeight:500,
+    background:active?"#F0A3BC":"#F4F5F7",color:active?"white":"#4A4A6A",
+    border:"none",cursor:"pointer" as const
+  })
+
   return (
-    <>
-    <style>{`
-  .p-page{padding:24px;font-family:system-ui,sans-serif}
-  .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-  .page-sub{font-size:13px;color:#8888AA;margin:0 0 24px}
-  .section-head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 10px}
-  .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .card-pad{padding:16px}
-  .card-table{overflow:hidden}
-  .tbl{width:100%;border-collapse:collapse}
-  .tbl th{background:#F4F5F7;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8888AA;padding:10px 14px;text-align:left;border-bottom:1px solid rgba(0,0,0,.08)}
-  .tbl td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.06);color:#1A1A2E}
-  .tbl tr:last-child td{border-bottom:none}
-  .tbl tr:hover td{background:rgba(0,0,0,.01)}
-  .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
-  .badge-teal{background:#E8F8F7;color:#3A9E9B}
-  .badge-purple{background:#F3EEFF;color:#7C3AED}
-  .badge-amber{background:#FEF3C7;color:#D97706}
-  .badge-green{background:#EAFAF3;color:#0EA572}
-  .badge-grey{background:#F4F5F7;color:#8888AA}
-  .badge-red{background:#FFF1F4;color:#E11D48}
-  .badge-pink{background:#FDE8EF;color:#C4638A}
-  .row{display:flex;align-items:center;gap:12px}
-  .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .grid-3-1{display:grid;grid-template-columns:3fr 1fr;gap:16px}
-  .mb4{margin-bottom:4px}.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}
-  .mt8{margin-top:8px}.mt16{margin-top:16px}
-  .txt-primary{color:#1A1A2E}.txt-secondary{color:#4A4A6A}.txt-muted{color:#8888AA}
-  .txt-pink{color:#C4638A}.txt-teal{color:#3A9E9B}.txt-green{color:#0EA572}.txt-red{color:#E11D48}.txt-amber{color:#D97706}
-  .fw600{font-weight:600}.fw700{font-weight:700}
-  .fs11{font-size:11px}.fs12{font-size:12px}.fs13{font-size:13px}
-  .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
-  .btn-pink:hover{background:#E88BAA}
-  .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
-  .btn-ghost:hover{background:#F4F5F7}
-  .btn-sm{padding:5px 10px;font-size:12px}
-  .input{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white}
-  .input:focus{border-color:#F0A3BC;box-shadow:0 0 0 3px rgba(240,163,188,.15)}
-  .input-label{display:block;font-size:11px;font-weight:600;color:#4A4A6A;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
-  .select{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;background:white;cursor:pointer}
-  .chip{padding:4px 12px;border-radius:99px;font-size:12px;font-weight:500;background:#F4F5F7;color:#4A4A6A;cursor:pointer;border:none}
-  .chip:hover{background:#FDE8EF;color:#C4638A}
-  .chip-active{background:#F0A3BC;color:white}
-  .chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-  .search-box{display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:1px solid rgba(0,0,0,.09);border-radius:10px;margin-bottom:14px}
-  .search-box input{border:none;outline:none;font-size:13px;color:#1A1A2E;background:transparent;flex:1}
-  .product-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;overflow:hidden;transition:box-shadow .2s}
-  .product-card:hover{box-shadow:0 4px 16px rgba(240,163,188,.2);border-color:rgba(240,163,188,.4)}
-  .product-img{height:120px;background:#F4F5F7;display:flex;align-items:center;justify-content:center;font-size:36px;position:relative}
-  .product-body{padding:12px}
-  .price-grid{display:grid;grid-template-columns:repeat(3,1fr);background:#F9FAFB;border:1px solid rgba(0,0,0,.07);border-radius:8px;padding:8px;margin:8px 0}
-  .price-col{text-align:center}
-  .price-col-label{font-size:9px;color:#8888AA;margin:0 0 2px}
-  .price-col-val{font-size:12px;font-weight:600;color:#1A1A2E;margin:0}
-  .price-col-val.pink{color:#C4638A}
-  .price-col-val.muted{color:#8888AA}
-  .stepper{display:flex;align-items:center;border:1px solid rgba(0,0,0,.12);border-radius:8px;overflow:hidden}
-  .stepper button{background:#F4F5F7;border:none;padding:6px 10px;font-size:14px;cursor:pointer;color:#4A4A6A}
-  .stepper span{font-size:13px;font-weight:600;padding:0 8px;color:#1A1A2E;min-width:30px;text-align:center}
-  .add-btn{flex:1;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;padding:7px;display:flex;align-items:center;justify-content:center;gap:4px}
-  .add-btn:hover{background:#E88BAA}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(2px);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
-  .modal{background:white;border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
-  .modal-title{font-size:16px;font-weight:700;color:#1A1A2E;margin:0 0 20px;display:flex;align-items:center;justify-content:space-between}
-  .form-row{margin-bottom:14px}
-  .stat-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 8px}
-  .stat-val{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-  .stat-sub{font-size:12px;margin:0;color:#8888AA}
-  .annc-card{border-left:3px solid #5CC8C5;background:#E8F8F7;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:10px}
-  .annc-card.pink{border-color:#F0A3BC;background:#FDE8EF}
-  .annc-title{font-size:13px;font-weight:600;color:#1A1A2E;margin:0 0 4px}
-  .annc-body{font-size:12px;color:#4A4A6A;margin:0}
-  .tag-pink{background:#FDE8EF;color:#C4638A;border:1px solid rgba(240,163,188,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
-  .tag-teal{background:#E8F8F7;color:#3A9E9B;border:1px solid rgba(92,200,197,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
-  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px;text-align:center}
-  .pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid rgba(0,0,0,.08)}
-  .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.08)}
-  .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08)}
-  .drawer-body{flex:1;overflow-y:auto;padding:16px}
-  .drawer-footer{border-top:1px solid rgba(0,0,0,.08);padding:16px}
-  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40}
-`}</style>
-    <div className="p-page">
-      <div className="row-between mb24"><div><h1 className="page-title">Orders</h1><p className="page-sub">{data?.total??0} total</p></div></div>
-      <div className="chip-row">
-        {STATUSES.map(s=><button key={s} className={"chip"+(status===s?" chip-active":"")} onClick={()=>{setStatus(s);setPage(1)}}>{s==="ALL"?"All":s.replace(/_/g," ")}</button>)}
+    <div style={s.page}>
+      <h1 style={s.title}>Orders</h1>
+      <p style={s.sub}>{data?.total ?? 0} total</p>
+
+      <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:16}}>
+        {STATUSES.map(st=>(
+          <button key={st} style={chipStyle(status===st)} onClick={()=>{setStatus(st);setPage(1);setExpanded(null)}}>
+            {st==="ALL"?"All":st.replace(/_/g," ")}
+          </button>
+        ))}
       </div>
-      <div className="card card-table">
-        <table className="tbl">
-          <thead><tr><th>Order</th><th>Retailer</th><th>Date</th><th>Items</th><th>Value</th><th>Status</th><th>Action</th></tr></thead>
+
+      <div style={{background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:12,boxShadow:"0 1px 4px rgba(0,0,0,.05)",overflow:"hidden"}}>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead>
+            <tr>
+              {["","Order","Retailer","Date","PO Ref","Items","Value","Status","Actions"].map(h=>(
+                <th key={h} style={s.th}>{h}</th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={7} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>Loading…</td></tr>
-            : orders.length===0 ? <tr><td colSpan={7} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No orders found</td></tr>
-            : orders.map((o: any) => (
-              <tr key={o.id}>
-                <td className="fw600 txt-pink">{o.orderNumber}</td>
-                <td className="txt-secondary">{o.retailer?.businessName}</td>
-                <td className="txt-muted">{formatDate(o.createdAt)}</td>
-                <td className="txt-secondary">{o._count?.items??o.items?.length??0}</td>
-                <td className="fw600">{formatCurrency(o.totalPence)}</td>
-                <td><span className={"badge "+(statusBadge[o.status]??"badge-grey")}>{o.status.replace(/_/g," ")}</span></td>
-                <td><button className="btn-ghost btn-sm" onClick={()=>{setEditing(o);setNewStatus(o.status);setTracking(o.trackingNumber??"");setCarrier(o.carrierName??"");setNote("")}}>Update</button></td>
-              </tr>
-            ))}
+            {isLoading ? (
+              <tr><td colSpan={9} style={{...s.td,textAlign:"center",color:"#8888AA",padding:32}}>Loading…</td></tr>
+            ) : orders.length===0 ? (
+              <tr><td colSpan={9} style={{...s.td,textAlign:"center",color:"#8888AA",padding:48}}>No orders found</td></tr>
+            ) : orders.map((o: any) => {
+              const isExpanded = expanded === o.id
+              const sc = STATUS_COLORS[o.status] ?? {bg:"#F4F5F7",color:"#8888AA"}
+              return (
+                <>
+                <tr key={o.id} style={{background:isExpanded?"rgba(240,163,188,.03)":"white"}}>
+                  <td style={{...s.td,width:40,padding:"12px 8px 12px 16px"}}>
+                    <button onClick={()=>setExpanded(isExpanded?null:o.id)}
+                      style={{background:"none",border:"1px solid rgba(0,0,0,.1)",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,color:"#8888AA",transition:"transform .2s",transform:isExpanded?"rotate(90deg)":"rotate(0)"}}>
+                      ▶
+                    </button>
+                  </td>
+                  <td style={s.td}><span style={{fontWeight:600,color:"#C4638A"}}>{o.orderNumber}</span></td>
+                  <td style={s.td}>
+                    <div style={{fontWeight:500,color:"#1A1A2E"}}>{o.retailer?.businessName}</div>
+                    <div style={{fontSize:11,color:"#8888AA"}}>{o.retailer?.user?.email ?? ""}</div>
+                  </td>
+                  <td style={{...s.td,color:"#8888AA"}}>{formatDate(o.createdAt)}</td>
+                  <td style={{...s.td,fontFamily:"monospace",fontSize:12,color:"#8888AA"}}>{o.poReference ?? "—"}</td>
+                  <td style={{...s.td,color:"#4A4A6A"}}>{o._count?.items ?? o.items?.length ?? 0}</td>
+                  <td style={{...s.td,fontWeight:600}}>{formatCurrency(o.totalPence)}</td>
+                  <td style={s.td}>
+                    <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:99,fontSize:11,fontWeight:600,background:sc.bg,color:sc.color}}>
+                      {o.status.replace(/_/g," ")}
+                    </span>
+                  </td>
+                  <td style={s.td}>
+                    <button style={{...s.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>{setEditing(o);setNewStatus(o.status);setTracking(o.trackingNumber??"");setCarrier(o.carrierName??"");setNote("")}}>
+                      Update
+                    </button>
+                  </td>
+                </tr>
+
+                {isExpanded && (
+                  <tr key={o.id+"-exp"}>
+                    <td colSpan={9} style={{padding:0,borderBottom:"1px solid rgba(0,0,0,.06)"}}>
+                      <div style={{background:"#FAFBFC",borderTop:"1px solid rgba(240,163,188,.15)",padding:"18px 24px"}}>
+                        {!orderDetail ? (
+                          <p style={{color:"#8888AA",fontSize:13,margin:0}}>Loading order details…</p>
+                        ) : (
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:24}}>
+                            {/* LINE ITEMS */}
+                            <div>
+                              <p style={{fontSize:11,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".07em",color:"#8888AA",margin:"0 0 10px"}}>
+                                Order Lines
+                              </p>
+                              <div style={{background:"white",border:"1px solid rgba(0,0,0,.08)",borderRadius:10,overflow:"hidden"}}>
+                                {(orderDetail.items ?? []).map((item: any, i: number) => (
+                                  <div key={item.id} style={{borderBottom:i<(orderDetail.items.length-1)?"1px solid rgba(0,0,0,.06)":"none",padding:"12px 14px"}}>
+                                    {editingItem?.id === item.id ? (
+                                      /* EDIT MODE */
+                                      <div>
+                                        <div style={{fontSize:13,fontWeight:600,color:"#1A1A2E",marginBottom:10}}>{item.productName}</div>
+                                        <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap" as const}}>
+                                          <div>
+                                            <div style={{fontSize:10,color:"#8888AA",marginBottom:4,textTransform:"uppercase" as const,letterSpacing:".05em",fontWeight:600}}>Unit Cost (£)</div>
+                                            <input style={{...s.inputSm,width:90}} type="number" step="0.01"
+                                              value={editingItem.unitCost}
+                                              onChange={e=>setEditingItem(ei=>ei?{...ei,unitCost:e.target.value}:ei)} />
+                                          </div>
+                                          <div>
+                                            <div style={{fontSize:10,color:"#8888AA",marginBottom:4,textTransform:"uppercase" as const,letterSpacing:".05em",fontWeight:600}}>Quantity</div>
+                                            <input style={{...s.inputSm,width:70}} type="number" min="1"
+                                              value={editingItem.quantity}
+                                              onChange={e=>setEditingItem(ei=>ei?{...ei,quantity:e.target.value}:ei)} />
+                                          </div>
+                                          <div style={{fontSize:12,color:"#8888AA",paddingBottom:2}}>
+                                            New total: <strong style={{color:"#1A1A2E"}}>£{(parseFloat(editingItem.unitCost||"0")*parseInt(editingItem.quantity||"0")/100).toFixed(2)}</strong>
+                                          </div>
+                                        </div>
+                                        <div style={{display:"flex",gap:8,marginTop:10}}>
+                                          <button style={s.btnPink} onClick={()=>editItemMutation.mutate({
+                                            orderId:o.id, itemId:item.id,
+                                            unitCostPence:Math.round(parseFloat(editingItem.unitCost)*100),
+                                            quantity:parseInt(editingItem.quantity)
+                                          })} disabled={editItemMutation.isPending}>
+                                            {editItemMutation.isPending?"Saving…":"Save changes"}
+                                          </button>
+                                          <button style={s.btnGhost} onClick={()=>setEditingItem(null)}>Cancel</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      /* VIEW MODE */
+                                      <div style={{display:"flex",alignItems:"center",gap:12}}>
+                                        <div style={{flex:1,minWidth:0}}>
+                                          <div style={{fontSize:13,fontWeight:500,color:"#1A1A2E",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.productName}</div>
+                                          <div style={{fontSize:11,color:"#8888AA",fontFamily:"monospace"}}>{item.sku} · ×{item.quantity} units</div>
+                                        </div>
+                                        <div style={{textAlign:"right" as const,flexShrink:0}}>
+                                          <div style={{fontSize:13,fontWeight:600,color:"#1A1A2E"}}>{formatCurrency(item.lineTotalPence)}</div>
+                                          <div style={{fontSize:11,color:"#8888AA"}}>{formatCurrency(item.unitCostPence)}/unit</div>
+                                        </div>
+                                        <div style={{display:"flex",gap:6,flexShrink:0}}>
+                                          <button style={s.btnSm} onClick={()=>setEditingItem({id:item.id,unitCost:(item.unitCostPence/100).toFixed(2),quantity:String(item.quantity)})}>
+                                            ✏️ Edit
+                                          </button>
+                                          {deleteConfirm===item.id ? (
+                                            <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                                              <button style={{...s.btnDanger,padding:"4px 8px"}} onClick={()=>deleteItemMutation.mutate({orderId:o.id,itemId:item.id})}>Confirm</button>
+                                              <button style={s.btnSm} onClick={()=>setDeleteConfirm(null)}>×</button>
+                                            </div>
+                                          ) : (
+                                            <button style={s.btnDanger} onClick={()=>setDeleteConfirm(item.id)}>🗑</button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {/* ORDER TOTALS */}
+                                <div style={{padding:"12px 14px",borderTop:"1px solid rgba(0,0,0,.08)",background:"#FAFBFC"}}>
+                                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#8888AA",marginBottom:3}}>
+                                    <span>Subtotal (ex. VAT)</span><span>{formatCurrency(orderDetail.subtotalPence)}</span>
+                                  </div>
+                                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#8888AA",marginBottom:5}}>
+                                    <span>VAT (20%)</span><span>{formatCurrency(orderDetail.vatPence)}</span>
+                                  </div>
+                                  <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"#C4638A",paddingTop:6,borderTop:"1px solid rgba(0,0,0,.06)"}}>
+                                    <span>Total</span><span>{formatCurrency(orderDetail.totalPence)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* ORDER INFO */}
+                            <div>
+                              <p style={{fontSize:11,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".07em",color:"#8888AA",margin:"0 0 10px"}}>Order Info</p>
+                              <div style={{background:"white",border:"1px solid rgba(0,0,0,.08)",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+                                {[
+                                  ["Retailer", orderDetail.retailer?.businessName],
+                                  ["Placed", formatDateTime(orderDetail.createdAt)],
+                                  ["PO Reference", orderDetail.poReference ?? "—"],
+                                  ["Carrier", orderDetail.carrierName ?? "—"],
+                                  ["Tracking", orderDetail.trackingNumber ?? "—"],
+                                ].map(([l,v]) => (
+                                  <div key={l} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"6px 0",borderBottom:"1px solid rgba(0,0,0,.05)",fontSize:13}}>
+                                    <span style={{color:"#8888AA",flexShrink:0}}>{l}</span>
+                                    <span style={{fontWeight:500,color:"#1A1A2E",textAlign:"right" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{v}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {orderDetail.retailer?.addresses?.[0] && (
+                                <div style={{background:"white",border:"1px solid rgba(0,0,0,.08)",borderRadius:10,padding:"12px 14px",fontSize:13,color:"#4A4A6A",lineHeight:1.8}}>
+                                  {orderDetail.retailer.addresses[0].line1}<br/>
+                                  {orderDetail.retailer.addresses[0].city}<br/>
+                                  <span style={{fontFamily:"monospace",fontSize:12}}>{orderDetail.retailer.addresses[0].postcode}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </>
+              )
+            })}
           </tbody>
         </table>
-        {totalPages>1 && <div className="pagination"><span className="txt-muted fs13">Page {page} of {totalPages}</span><div className="row" style={{gap:8}}><button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button><button className="btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button></div></div>}
+        {totalPages > 1 && (
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,.08)"}}>
+            <span style={{fontSize:13,color:"#8888AA"}}>Page {page} of {totalPages}</span>
+            <div style={{display:"flex",gap:8}}>
+              <button style={{...s.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button>
+              <button style={{...s.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* UPDATE STATUS MODAL */}
       {editing && (
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setEditing(null)}>
-          <div className="modal">
-            <div className="modal-title">{editing.orderNumber} <button onClick={()=>setEditing(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#8888AA"}}>×</button></div>
-            <div className="form-row"><label className="input-label">Status</label><select className="select" value={newStatus} onChange={e=>setNewStatus(e.target.value)}>{STATUSES.filter(s=>s!=="ALL").map(s=><option key={s} value={s}>{s.replace(/_/g," ")}</option>)}</select></div>
-            <div className="form-row"><label className="input-label">Carrier</label><input className="input" value={carrier} onChange={e=>setCarrier(e.target.value)} placeholder="e.g. Royal Mail" /></div>
-            <div className="form-row"><label className="input-label">Tracking number</label><input className="input" value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="e.g. RM123456789GB" /></div>
-            <div className="form-row"><label className="input-label">Note (optional)</label><input className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="Internal note…" /></div>
-            <div className="row" style={{gap:8,marginTop:20}}>
-              <button className="btn-ghost" style={{flex:1}} onClick={()=>setEditing(null)}>Cancel</button>
-              <button className="btn-pink" style={{flex:1}} onClick={()=>updateMutation.mutate({id:editing.id,status:newStatus,trackingNumber:tracking||undefined,carrierName:carrier||undefined,note:note||undefined})} disabled={updateMutation.isPending}>{updateMutation.isPending?"Saving…":"Save Changes"}</button>
+        <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&setEditing(null)}>
+          <div style={s.modal}>
+            <div style={{fontSize:17,fontWeight:700,color:"#1A1A2E",margin:"0 0 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              Update {editing.orderNumber}
+              <button onClick={()=>setEditing(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0}}>×</button>
+            </div>
+            <div style={{marginBottom:14}}><label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const}}>Status</label><select style={s.select} value={newStatus} onChange={e=>setNewStatus(e.target.value)}>{STATUSES.filter(s=>s!=="ALL").map(s=><option key={s} value={s}>{s.replace(/_/g," ")}</option>)}</select></div>
+            <div style={{marginBottom:14}}><label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const}}>Carrier</label><input style={s.input} value={carrier} onChange={e=>setCarrier(e.target.value)} placeholder="e.g. Royal Mail, DPD, Evri" /></div>
+            <div style={{marginBottom:14}}><label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const}}>Tracking Number</label><input style={s.input} value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="e.g. RM123456789GB" /></div>
+            <div style={{marginBottom:14}}><label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const}}>Note (optional)</label><input style={s.input} value={note} onChange={e=>setNote(e.target.value)} placeholder="Internal note…" /></div>
+            <div style={{display:"flex",gap:10,marginTop:20}}>
+              <button style={{...s.btnGhost,flex:1}} onClick={()=>setEditing(null)}>Cancel</button>
+              <button style={{...s.btnPink,flex:1}} onClick={()=>updateMutation.mutate({id:editing.id,status:newStatus,trackingNumber:tracking||undefined,carrierName:carrier||undefined,note:note||undefined})} disabled={updateMutation.isPending}>{updateMutation.isPending?"Saving…":"Save Changes"}</button>
             </div>
           </div>
         </div>
       )}
     </div>
-    </>
   )
 }
