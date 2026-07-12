@@ -1,179 +1,288 @@
 "use client"
 import { useState, useRef } from "react"
+import * as XLSX from "xlsx"
+
+const REQUIRED_COLS = ["sku", "name", "brand", "unit_cost", "cdu_size", "rrp"]
+const OPTIONAL_COLS = ["type", "stock", "description"]
+const ALL_COLS = [...REQUIRED_COLS, ...OPTIONAL_COLS]
+
+const EXAMPLE_DATA = [
+  { sku:"PM-LBB-001", name:"Labubu The Monsters Series 1", brand:"POP MART", unit_cost:8.50, cdu_size:6, rrp:14.99, type:"BLIND_BOX", stock:144, description:"Original Labubu series" },
+  { sku:"SA-FRT-001", name:"Sonny Angel Fruit Series", brand:"Sonny Angel", unit_cost:7.00, cdu_size:12, rrp:12.99, type:"BLIND_BOX", stock:120, description:"" },
+  { sku:"SMI-DSK-001", name:"SMISKI Desk Series Vol.3", brand:"SMISKI", unit_cost:6.00, cdu_size:12, rrp:9.99, type:"BLIND_BOX", stock:84, description:"" },
+]
+
+interface ParsedRow {
+  _rowNum: number
+  _valid: boolean
+  _errors: string[]
+  [key: string]: any
+}
+
+function validateRow(row: any, rowNum: number): ParsedRow {
+  const errors: string[] = []
+  if (!row.sku?.toString().trim()) errors.push("SKU required")
+  if (!row.name?.toString().trim()) errors.push("Name required")
+  if (!row.brand?.toString().trim()) errors.push("Brand required")
+  if (!row.unit_cost || isNaN(parseFloat(row.unit_cost))) errors.push("Unit cost must be a number")
+  if (!row.cdu_size || isNaN(parseInt(row.cdu_size))) errors.push("CDU size must be a number")
+  if (!row.rrp || isNaN(parseFloat(row.rrp))) errors.push("RRP must be a number")
+  return { ...row, _rowNum: rowNum, _valid: errors.length === 0, _errors: errors }
+}
+
+function downloadTemplate() {
+  const ws = XLSX.utils.json_to_sheet(EXAMPLE_DATA, { header: ALL_COLS })
+  ws["!cols"] = ALL_COLS.map(c => ({ wch: c === "name" || c === "description" ? 35 : 14 }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Products")
+  XLSX.writeFile(wb, "collect-display-product-import-template.xlsx")
+}
 
 export default function AdminImportsPage() {
   const [dragging, setDragging] = useState(false)
-  const [file, setFile] = useState<File|null>(null)
-  const [preview, setPreview] = useState<any>(null)
+  const [fileName, setFileName] = useState<string|null>(null)
+  const [rows, setRows] = useState<ParsedRow[]>([])
   const [importing, setImporting] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<{imported:number;errors:string[]}|null>(null)
+  const [step, setStep] = useState<"upload"|"preview"|"done">("upload")
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const parseCSV = (text: string) => {
-    const lines = text.trim().split("\n")
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/ /g,"_"))
-    return lines.slice(1).map((line, i) => {
-      const vals = line.split(",")
-      const row: any = { _rowNum: i + 2 }
-      headers.forEach((h, j) => { row[h] = vals[j]?.trim() ?? "" })
-      return row
-    })
-  }
+  const parseFile = (file: File) => {
+    setFileName(file.name)
+    setResult(null)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer)
+        const wb = XLSX.read(data, { type: "array" })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: "" })
 
-  const handleFile = async (f: File) => {
-    setFile(f); setResult(null)
-    const text = await f.text()
-    const rows = parseCSV(text)
-    const r = await fetch("/api/imports", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({rows, preview: true}) })
-    setPreview({ ...(await r.json()), rows, text })
+        // Normalise headers (lowercase + underscores)
+        const normalised = rawRows.map((row: any, i) => {
+          const norm: any = {}
+          Object.keys(row).forEach(k => {
+            norm[k.toLowerCase().trim().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")] = row[k]
+          })
+          return norm
+        })
+
+        const parsed = normalised.map((r, i) => validateRow(r, i + 2))
+        setRows(parsed)
+        setStep("preview")
+      } catch (err) {
+        alert("Could not read file. Make sure it is a valid .xlsx or .csv file.")
+      }
+    }
+    reader.readAsArrayBuffer(file)
   }
 
   const handleImport = async () => {
-    if (!preview) return
+    const validRows = rows.filter(r => r._valid)
     setImporting(true)
-    const r = await fetch("/api/imports", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({rows: preview.rows, preview: false}) })
-    setResult(await r.json())
-    setImporting(false)
-    setPreview(null)
-    setFile(null)
+    try {
+      const r = await fetch("/api/imports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: validRows.map(({ _rowNum, _valid, _errors, ...r }) => r), preview: false }),
+      })
+      const d = await r.json()
+      setResult({ imported: d.imported, errors: d.errors ?? [] })
+      setStep("done")
+    } catch {
+      alert("Import failed. Please try again.")
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const reset = () => { setStep("upload"); setRows([]); setFileName(null); setResult(null) }
+
+  const valid = rows.filter(r => r._valid)
+  const invalid = rows.filter(r => !r._valid)
+
+  const s: Record<string,any> = {
+    page: {padding:24,fontFamily:"system-ui,sans-serif",maxWidth:1000},
+    title: {fontSize:22,fontWeight:700,color:"#1A1A2E",margin:"0 0 4px"},
+    sub: {fontSize:13,color:"#8888AA",margin:"0 0 24px"},
+    card: {background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:12,boxShadow:"0 1px 4px rgba(0,0,0,.05)"},
+    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px 20px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    btnGhost: {display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
+    btnTeal: {display:"inline-flex",alignItems:"center",gap:6,padding:"10px 20px",background:"#5CC8C5",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    th: {background:"#F4F5F7",fontSize:10,fontWeight:600,textTransform:"uppercase" as const,letterSpacing:".06em",color:"#8888AA",padding:"9px 12px",textAlign:"left" as const,borderBottom:"1px solid rgba(0,0,0,.08)",whiteSpace:"nowrap" as const},
+    td: {padding:"9px 12px",fontSize:12,borderBottom:"1px solid rgba(0,0,0,.05)",verticalAlign:"top" as const},
+    label: {fontSize:10,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".08em",color:"#8888AA",margin:"0 0 6px"},
   }
 
   return (
-    <>
-    <style>{`
-  .p-page{padding:24px;font-family:system-ui,sans-serif}
-  .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-  .page-sub{font-size:13px;color:#8888AA;margin:0 0 24px}
-  .section-head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 10px}
-  .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .card-pad{padding:16px}
-  .card-table{overflow:hidden}
-  .tbl{width:100%;border-collapse:collapse}
-  .tbl th{background:#F4F5F7;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8888AA;padding:10px 14px;text-align:left;border-bottom:1px solid rgba(0,0,0,.08)}
-  .tbl td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.06);color:#1A1A2E}
-  .tbl tr:last-child td{border-bottom:none}
-  .tbl tr:hover td{background:rgba(0,0,0,.01)}
-  .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
-  .badge-teal{background:#E8F8F7;color:#3A9E9B}
-  .badge-purple{background:#F3EEFF;color:#7C3AED}
-  .badge-amber{background:#FEF3C7;color:#D97706}
-  .badge-green{background:#EAFAF3;color:#0EA572}
-  .badge-grey{background:#F4F5F7;color:#8888AA}
-  .badge-red{background:#FFF1F4;color:#E11D48}
-  .badge-pink{background:#FDE8EF;color:#C4638A}
-  .row{display:flex;align-items:center;gap:12px}
-  .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .grid-3-1{display:grid;grid-template-columns:3fr 1fr;gap:16px}
-  .mb4{margin-bottom:4px}.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}
-  .mt8{margin-top:8px}.mt16{margin-top:16px}
-  .txt-primary{color:#1A1A2E}.txt-secondary{color:#4A4A6A}.txt-muted{color:#8888AA}
-  .txt-pink{color:#C4638A}.txt-teal{color:#3A9E9B}.txt-green{color:#0EA572}.txt-red{color:#E11D48}.txt-amber{color:#D97706}
-  .fw600{font-weight:600}.fw700{font-weight:700}
-  .fs11{font-size:11px}.fs12{font-size:12px}.fs13{font-size:13px}
-  .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
-  .btn-pink:hover{background:#E88BAA}
-  .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
-  .btn-ghost:hover{background:#F4F5F7}
-  .btn-sm{padding:5px 10px;font-size:12px}
-  .input{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white}
-  .input:focus{border-color:#F0A3BC;box-shadow:0 0 0 3px rgba(240,163,188,.15)}
-  .input-label{display:block;font-size:11px;font-weight:600;color:#4A4A6A;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
-  .select{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;color:#1A1A2E;outline:none;background:white;cursor:pointer}
-  .chip{padding:4px 12px;border-radius:99px;font-size:12px;font-weight:500;background:#F4F5F7;color:#4A4A6A;cursor:pointer;border:none}
-  .chip:hover{background:#FDE8EF;color:#C4638A}
-  .chip-active{background:#F0A3BC;color:white}
-  .chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-  .search-box{display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:1px solid rgba(0,0,0,.09);border-radius:10px;margin-bottom:14px}
-  .search-box input{border:none;outline:none;font-size:13px;color:#1A1A2E;background:transparent;flex:1}
-  .product-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;overflow:hidden;transition:box-shadow .2s}
-  .product-card:hover{box-shadow:0 4px 16px rgba(240,163,188,.2);border-color:rgba(240,163,188,.4)}
-  .product-img{height:120px;background:#F4F5F7;display:flex;align-items:center;justify-content:center;font-size:36px;position:relative}
-  .product-body{padding:12px}
-  .price-grid{display:grid;grid-template-columns:repeat(3,1fr);background:#F9FAFB;border:1px solid rgba(0,0,0,.07);border-radius:8px;padding:8px;margin:8px 0}
-  .price-col{text-align:center}
-  .price-col-label{font-size:9px;color:#8888AA;margin:0 0 2px}
-  .price-col-val{font-size:12px;font-weight:600;color:#1A1A2E;margin:0}
-  .price-col-val.pink{color:#C4638A}
-  .price-col-val.muted{color:#8888AA}
-  .stepper{display:flex;align-items:center;border:1px solid rgba(0,0,0,.12);border-radius:8px;overflow:hidden}
-  .stepper button{background:#F4F5F7;border:none;padding:6px 10px;font-size:14px;cursor:pointer;color:#4A4A6A}
-  .stepper span{font-size:13px;font-weight:600;padding:0 8px;color:#1A1A2E;min-width:30px;text-align:center}
-  .add-btn{flex:1;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;padding:7px;display:flex;align-items:center;justify-content:center;gap:4px}
-  .add-btn:hover{background:#E88BAA}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(2px);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
-  .modal{background:white;border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
-  .modal-title{font-size:16px;font-weight:700;color:#1A1A2E;margin:0 0 20px;display:flex;align-items:center;justify-content:space-between}
-  .form-row{margin-bottom:14px}
-  .stat-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 8px}
-  .stat-val{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-  .stat-sub{font-size:12px;margin:0;color:#8888AA}
-  .annc-card{border-left:3px solid #5CC8C5;background:#E8F8F7;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:10px}
-  .annc-card.pink{border-color:#F0A3BC;background:#FDE8EF}
-  .annc-title{font-size:13px;font-weight:600;color:#1A1A2E;margin:0 0 4px}
-  .annc-body{font-size:12px;color:#4A4A6A;margin:0}
-  .tag-pink{background:#FDE8EF;color:#C4638A;border:1px solid rgba(240,163,188,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
-  .tag-teal{background:#E8F8F7;color:#3A9E9B;border:1px solid rgba(92,200,197,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
-  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px;text-align:center}
-  .pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid rgba(0,0,0,.08)}
-  .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.08)}
-  .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08)}
-  .drawer-body{flex:1;overflow-y:auto;padding:16px}
-  .drawer-footer{border-top:1px solid rgba(0,0,0,.08);padding:16px}
-  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40}
-`}</style>
-    <div className="p-page">
-      <div className="mb24"><h1 className="page-title">Import Products</h1><p className="page-sub">Upload a CSV to add or update products in bulk</p></div>
-      {!preview && !result && (
-        <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);const f=e.dataTransfer.files[0];if(f)handleFile(f)}}
-          style={{border:"2px dashed",borderColor:dragging?"#F0A3BC":"rgba(0,0,0,0.15)",borderRadius:16,padding:"48px 24px",textAlign:"center",cursor:"pointer",background:dragging?"#FDE8EF":"#FAFBFC",transition:"all 0.15s"}}
-          onClick={()=>inputRef.current?.click()}>
-          <div style={{fontSize:40,marginBottom:12}}>📄</div>
-          <p className="fw600 txt-primary">Drop your CSV here or click to upload</p>
-          <p className="txt-muted fs13">Required columns: sku, name, brand, unit_cost, cdu_size, rrp</p>
-          <input ref={inputRef} type="file" accept=".csv" style={{display:"none"}} onChange={e=>e.target.files?.[0]&&handleFile(e.target.files[0])} />
-        </div>
-      )}
-      {preview && (
+    <div style={s.page}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
         <div>
-          <div className="card card-pad mb16">
-            <h2 className="fw600 txt-primary mb8">Preview: {file?.name}</h2>
-            <div className="row" style={{gap:16,marginBottom:16}}>
-              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:700,color:"#0EA572",margin:0}}>{preview.valid}</p><p className="txt-muted fs12">Valid rows</p></div>
-              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:700,color:"#E11D48",margin:0}}>{preview.invalid}</p><p className="txt-muted fs12">Invalid rows</p></div>
-            </div>
-            {preview.errors?.length > 0 && (
-              <div style={{background:"#FFF1F4",border:"1px solid rgba(225,29,72,0.2)",borderRadius:8,padding:12,marginBottom:16}}>
-                {preview.errors.map((e: string, i: number) => <p key={i} style={{fontSize:12,color:"#E11D48",margin:"2px 0"}}>{e}</p>)}
-              </div>
-            )}
-            <div className="row" style={{gap:8}}>
-              <button className="btn-ghost" style={{flex:1}} onClick={()=>{setPreview(null);setFile(null)}}>Cancel</button>
-              <button className="btn-pink" style={{flex:1}} onClick={handleImport} disabled={importing||preview.valid===0}>{importing?"Importing…":"Import "+preview.valid+" products"}</button>
-            </div>
-          </div>
+          <h1 style={s.title}>Bulk Import Products</h1>
+          <p style={{...s.sub,margin:0}}>Upload an Excel (.xlsx) or CSV file to add or update products in bulk</p>
         </div>
-      )}
-      {result && (
-        <div className="card card-pad">
-          <div style={{textAlign:"center",padding:"24px 0"}}>
-            <div style={{fontSize:48,marginBottom:12}}>✅</div>
-            <h2 className="fw700 txt-primary">Import complete!</h2>
-            <p className="txt-muted">{result.imported} products imported successfully</p>
-            <button className="btn-pink" style={{marginTop:16}} onClick={()=>setResult(null)}>Import another file</button>
-          </div>
-        </div>
-      )}
-      <div className="card card-pad" style={{marginTop:24}}>
-        <h3 className="fw600 txt-primary mb8">CSV Format</h3>
-        <p className="txt-muted fs13 mb8">Your CSV file should have these column headers in the first row:</p>
-        <code style={{display:"block",background:"#F4F5F7",padding:"10px 14px",borderRadius:8,fontSize:12,color:"#4A4A6A"}}>sku, name, brand, type, unit_cost, cdu_size, rrp, stock, description</code>
-        <p className="txt-muted fs12" style={{marginTop:8}}>Example: PM-LBB-001, Labubu Series 1, POP MART, BLIND_BOX, 8.50, 6, 14.99, 100</p>
+        <button style={s.btnGhost} onClick={downloadTemplate}>
+          ⬇ Download Template
+        </button>
       </div>
+
+      {/* COLUMN GUIDE */}
+      <div style={{...s.card,padding:"16px 20px",marginBottom:20}}>
+        <p style={s.label}>Required columns</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,marginBottom:12}}>
+          {REQUIRED_COLS.map(c=>(
+            <span key={c} style={{background:"#FDE8F1",color:"#C4638A",border:"1px solid rgba(240,163,188,.3)",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,fontFamily:"monospace"}}>{c}</span>
+          ))}
+        </div>
+        <p style={{...s.label,marginTop:4}}>Optional columns</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,marginBottom:8}}>
+          {OPTIONAL_COLS.map(c=>(
+            <span key={c} style={{background:"#F4F5F7",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.1)",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,fontFamily:"monospace"}}>{c}</span>
+          ))}
+        </div>
+        <p style={{fontSize:12,color:"#8888AA",margin:"8px 0 0"}}>
+          Column headers must match exactly (case-insensitive). <strong style={{color:"#1A1A2E"}}>unit_cost</strong> and <strong style={{color:"#1A1A2E"}}>rrp</strong> in £ (e.g. 8.50). If a SKU already exists, the product will be updated. Download the template to get started.
+        </p>
+      </div>
+
+      {/* STEP: UPLOAD */}
+      {step === "upload" && (
+        <div
+          style={{
+            border:`2px dashed ${dragging?"#F0A3BC":"rgba(0,0,0,.15)"}`,
+            borderRadius:16,padding:"56px 24px",textAlign:"center",
+            background:dragging?"#FDE8F1":"#FAFBFC",
+            cursor:"pointer",transition:"all .15s"
+          }}
+          onClick={()=>inputRef.current?.click()}
+          onDragOver={e=>{e.preventDefault();setDragging(true)}}
+          onDragLeave={()=>setDragging(false)}
+          onDrop={e=>{e.preventDefault();setDragging(false);const f=e.dataTransfer.files[0];if(f)parseFile(f)}}
+        >
+          <div style={{fontSize:48,marginBottom:14}}>📊</div>
+          <p style={{fontSize:16,fontWeight:600,color:"#1A1A2E",margin:"0 0 6px"}}>Drop your spreadsheet here</p>
+          <p style={{fontSize:13,color:"#8888AA",margin:"0 0 20px"}}>or click to browse · Excel (.xlsx) or CSV</p>
+          <button style={s.btnPink} onClick={e=>{e.stopPropagation();inputRef.current?.click()}}>Choose file</button>
+          <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}}
+            onChange={e=>{const f=e.target.files?.[0];if(f)parseFile(f);e.target.value=""}} />
+        </div>
+      )}
+
+      {/* STEP: PREVIEW */}
+      {step === "preview" && rows.length > 0 && (
+        <div>
+          {/* Summary bar */}
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:12,marginBottom:16,flexWrap:"wrap" as const}}>
+            <div style={{fontSize:13,color:"#4A4A6A"}}>
+              <strong style={{color:"#1A1A2E"}}>{fileName}</strong>
+            </div>
+            <div style={{display:"flex",gap:8,marginLeft:"auto",alignItems:"center"}}>
+              <span style={{background:"#EAFAF3",color:"#0EA572",border:"1px solid rgba(14,165,114,.2)",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:600}}>✓ {valid.length} valid</span>
+              {invalid.length > 0 && <span style={{background:"#FFF1F4",color:"#E11D48",border:"1px solid rgba(225,29,72,.2)",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:600}}>✗ {invalid.length} errors</span>}
+              <button style={s.btnGhost} onClick={reset}>Change file</button>
+              <button style={{...s.btnPink,opacity:valid.length===0?.5:1}} disabled={valid.length===0||importing} onClick={handleImport}>
+                {importing ? "Importing…" : `Import ${valid.length} product${valid.length!==1?"s":""}`}
+              </button>
+            </div>
+          </div>
+
+          {/* Error list */}
+          {invalid.length > 0 && (
+            <div style={{background:"#FFF8F8",border:"1px solid rgba(225,29,72,.15)",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+              <p style={{fontSize:12,fontWeight:700,color:"#E11D48",margin:"0 0 8px",textTransform:"uppercase" as const,letterSpacing:".06em"}}>Rows with errors — these will be skipped</p>
+              {invalid.map(r=>(
+                <div key={r._rowNum} style={{fontSize:12,color:"#C02030",marginBottom:3}}>
+                  Row {r._rowNum}: {r.name||r.sku||"(empty)"} — {r._errors.join(", ")}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Preview table */}
+          <div style={{...s.card,overflow:"hidden"}}>
+            <div style={{overflowX:"auto" as const}}>
+              <table style={{width:"100%",borderCollapse:"collapse",minWidth:700}}>
+                <thead>
+                  <tr>
+                    <th style={s.th}>#</th>
+                    <th style={s.th}>SKU</th>
+                    <th style={s.th}>Name</th>
+                    <th style={s.th}>Brand</th>
+                    <th style={s.th}>Type</th>
+                    <th style={s.th}>Unit Cost</th>
+                    <th style={s.th}>CDU</th>
+                    <th style={s.th}>RRP</th>
+                    <th style={s.th}>Stock</th>
+                    <th style={s.th}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(row => (
+                    <tr key={row._rowNum} style={{background:row._valid?"white":"#FFF8F8"}}>
+                      <td style={{...s.td,color:"#BBBBCC"}}>{row._rowNum}</td>
+                      <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#8888AA"}}>{row.sku||<span style={{color:"#E11D48"}}>missing</span>}</td>
+                      <td style={{...s.td,fontWeight:500,color:"#1A1A2E",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{row.name||"—"}</td>
+                      <td style={{...s.td,color:"#4A4A6A"}}>{row.brand||"—"}</td>
+                      <td style={{...s.td,color:"#4A4A6A",fontSize:11}}>{(row.type||"BLIND_BOX").replace(/_/g," ")}</td>
+                      <td style={{...s.td,fontWeight:600,color:"#1A1A2E"}}>£{parseFloat(row.unit_cost||0).toFixed(2)}</td>
+                      <td style={{...s.td,color:"#4A4A6A"}}>×{row.cdu_size||"—"}</td>
+                      <td style={{...s.td,color:"#8888AA"}}>£{parseFloat(row.rrp||0).toFixed(2)}</td>
+                      <td style={{...s.td,color:"#4A4A6A"}}>{row.stock||0}</td>
+                      <td style={s.td}>
+                        {row._valid
+                          ? <span style={{background:"#EAFAF3",color:"#0EA572",borderRadius:4,padding:"2px 7px",fontSize:11,fontWeight:600}}>Ready</span>
+                          : <span style={{background:"#FFF1F4",color:"#E11D48",borderRadius:4,padding:"2px 7px",fontSize:11,fontWeight:600}} title={row._errors.join(", ")}>Error</span>
+                        }
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP: DONE */}
+      {step === "done" && result && (
+        <div style={{...s.card,padding:"40px 24px",textAlign:"center"}}>
+          <div style={{fontSize:52,marginBottom:16}}>✅</div>
+          <h2 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",margin:"0 0 8px"}}>Import complete!</h2>
+          <p style={{fontSize:14,color:"#8888AA",margin:"0 0 24px"}}>{result.imported} product{result.imported!==1?"s":""} imported successfully</p>
+          {result.errors.length > 0 && (
+            <div style={{background:"#FFF8F8",border:"1px solid rgba(225,29,72,.15)",borderRadius:10,padding:"12px 16px",marginBottom:20,textAlign:"left" as const}}>
+              <p style={{fontSize:12,fontWeight:700,color:"#E11D48",margin:"0 0 6px"}}>Skipped rows</p>
+              {result.errors.map((e,i)=><div key={i} style={{fontSize:12,color:"#C02030",marginBottom:2}}>{e}</div>)}
+            </div>
+          )}
+          <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+            <button style={s.btnGhost} onClick={reset}>Import another file</button>
+            <button style={s.btnPink} onClick={()=>window.location.href="/admin/products"}>View products →</button>
+          </div>
+        </div>
+      )}
+
+      {/* TIPS */}
+      {step === "upload" && (
+        <div style={{marginTop:24,padding:"16px 20px",background:"#F9FAFB",borderRadius:10,border:"1px solid rgba(0,0,0,.07)"}}>
+          <p style={{...s.label,margin:"0 0 10px"}}>Tips for a smooth import</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 24px"}}>
+            {[
+              ["Use the template", "Download it above — headers are pre-formatted correctly"],
+              ["unit_cost & rrp in pounds", "Enter 8.50 not 850 — the system converts to pence"],
+              ["Existing SKUs update", "If a SKU already exists, name, price and stock will be updated"],
+              ["type values", "BLIND_BOX · FIGURE · PLUSH · ACCESSORY · BUNDLE"],
+              ["Leave stock blank for 0", "New products default to 0 stock if column is empty"],
+              ["Brand auto-created", "If the brand doesn't exist it will be created automatically"],
+            ].map(([title,desc])=>(
+              <div key={title} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                <span style={{color:"#F0A3BC",fontSize:14,flexShrink:0,marginTop:1}}>→</span>
+                <div><span style={{fontSize:12,fontWeight:600,color:"#1A1A2E"}}>{title}:</span><span style={{fontSize:12,color:"#8888AA"}}> {desc}</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
-    </>
   )
 }
