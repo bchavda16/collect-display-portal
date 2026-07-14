@@ -107,6 +107,7 @@ model Retailer {
   orders           Order[]
   addresses        Address[]
   savedBasket      SavedBasketItem[]
+  offers           ProductOffer[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -165,6 +166,7 @@ model Product {
   images            ProductImage[]
   orderItems        OrderItem[]
   savedBasket       SavedBasketItem[]
+  offers            ProductOffer[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -315,4 +317,27 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+enum OfferStatus { PENDING ACCEPTED DECLINED COUNTERED EXPIRED COMPLETED }
+
+model ProductOffer {
+  id                String      @id @default(cuid())
+  retailerId        String
+  retailer          Retailer    @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product     @relation(fields: [productId], references: [id])
+  offeredPricePence Int
+  counterPricePence Int?
+  quantity          Int
+  note              String?
+  adminNote         String?
+  status            OfferStatus @default(PENDING)
+  expiresAt         DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([retailerId])
+  @@index([productId])
+  @@index([status])
 }
