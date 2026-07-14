@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { LayoutDashboard, Package, ClipboardList, Truck, User, LogOut, ShoppingCart } from 'lucide-react'
+import { LayoutDashboard, Package, ClipboardList, Truck, User, LogOut, ShoppingCart, Tag } from 'lucide-react'
 import { useBasket } from '@/hooks/useBasket'
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/stock',     label: 'Live Stock',  icon: Package },
   { href: '/orders',    label: 'My Orders',   icon: ClipboardList },
   { href: '/tracking',  label: 'Tracking',    icon: Truck },
+  { href: '/offers',    label: 'My Offers',   icon: Tag },
   { href: '/account',   label: 'Account',     icon: User },
 ]
 

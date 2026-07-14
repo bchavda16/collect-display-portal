@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut, Tag } from 'lucide-react'
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/admin/products',  label: 'Products',  icon: Package },
   { href: '/admin/retailers', label: 'Retailers', icon: Building2 },
   { href: '/admin/imports',   label: 'Imports',   icon: Upload },
+  { href: '/admin/offers',    label: 'Offers',    icon: Tag },
 ]
 
 const s = {
