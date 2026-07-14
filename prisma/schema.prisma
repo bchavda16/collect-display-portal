@@ -319,7 +319,14 @@ model AuditLog {
   @@index([createdAt])
 }
 
-enum OfferStatus { PENDING ACCEPTED DECLINED COUNTERED EXPIRED COMPLETED }
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COUNTERED
+  EXPIRED
+  COMPLETED
+}
 
 model ProductOffer {
   id                String      @id @default(cuid())
