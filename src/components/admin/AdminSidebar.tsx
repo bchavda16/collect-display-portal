@@ -8,7 +8,7 @@ import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut } fr
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/orders',    label: 'Orders',    icon: ClipboardList },
-  { href: '/admin/products',  label: 'Inventory',  icon: Package },
+  { href: '/admin/products',  label: 'Products',  icon: Package },
   { href: '/admin/retailers', label: 'Retailers', icon: Building2 },
   { href: '/admin/imports',   label: 'Imports',   icon: Upload },
 ]
