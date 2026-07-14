@@ -1,303 +1,513 @@
-"use client"
-import { useState, useRef } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrency } from "@/lib/utils"
+'use client'
 
-// Image dimensions: 6cm x 3.5cm ~ 170px x 99px display
-const IMG_W = 170
-const IMG_H = 99
+import { useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Search, Plus, Package, AlertTriangle, Edit2, Trash2, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Badge, ProductBadgeChip } from '@/components/ui/Badge'
+import { toast } from '@/components/ui/Toaster'
+import { useDebounce } from '@/hooks/useDebounce'
+import { formatCurrencyFromPounds } from '@/lib/utils'
+import type { ProductWithBrand } from '@/types'
+
+const PRODUCT_TYPES = ['ALL', 'BLIND_BOX', 'FIGURE', 'PLUSH', 'ACCESSORY', 'BUNDLE']
+const PRODUCT_STATUSES = ['ALL', 'ACTIVE', 'LOW_STOCK', 'OUT_OF_STOCK', 'COMING_SOON', 'DISCONTINUED']
+
+interface EditingStock {
+  productId: string
+  value: string
+}
 
 export default function AdminProductsPage() {
-  const qc = useQueryClient()
-  const [search, setSearch] = useState("")
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL')
   const [page, setPage] = useState(1)
-  const [editStock, setEditStock] = useState<{id:string;val:string}|null>(null)
-  const [showCreate, setShowCreate] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any>(null)
-  const [form, setForm] = useState({name:"",sku:"",brandName:"",productType:"BLIND_BOX",unitCost:"",cduSize:"6",rrp:"",stockUnits:"0"})
-  const [editForm, setEditForm] = useState({name:"",unitCost:"",rrp:"",cduSize:"",description:""})
-  const [uploadingImg, setUploadingImg] = useState(false)
-  const [imgPreview, setImgPreview] = useState<string|null>(null)
-  const imgRef = useRef<HTMLInputElement>(null)
+  const [editingStock, setEditingStock] = useState<EditingStock | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
+  const debouncedSearch = useDebounce(search, 300)
+
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: '20',
+    ...(debouncedSearch && { search: debouncedSearch }),
+    ...(typeFilter !== 'ALL' && { type: typeFilter }),
+    ...(statusFilter !== 'ALL' && { status: statusFilter }),
+  })
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-products", search, page],
+    queryKey: ['admin-products', debouncedSearch, typeFilter, statusFilter, page],
     queryFn: async () => {
-      const p = new URLSearchParams({ page: String(page), limit: "20", ...(search&&{search}) })
-      const r = await fetch("/api/products?"+p); return r.json()
+      const res = await fetch(`/api/products?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch products')
+      return res.json()
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, ...body }: any) => {
-      const r = await fetch("/api/products/"+id, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
-      return r.json()
+  const updateStockMutation = useMutation({
+    mutationFn: async ({ id, stock }: { id: string; stock: number }) => {
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stockUnits: stock }),
+      })
+      if (!res.ok) throw new Error('Failed to update stock')
+      return res.json()
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-products"]}); setEditStock(null); setEditingProduct(null); setImgPreview(null) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      setEditingStock(null)
+      toast('Stock updated', 'success')
+    },
+    onError: () => toast('Failed to update stock', 'error'),
   })
 
-  const createMutation = useMutation({
-    mutationFn: async (body: any) => {
-      const r = await fetch("/api/products", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
-      return r.json()
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) throw new Error('Failed to update status')
+      return res.json()
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-products"]}); setShowCreate(false); setForm({name:"",sku:"",brandName:"",productType:"BLIND_BOX",unitCost:"",cduSize:"6",rrp:"",stockUnits:"0"}) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      toast('Status updated', 'success')
+    },
+    onError: () => toast('Failed to update status', 'error'),
   })
 
-  const handleImageUpload = async (file: File, productId: string) => {
-    setUploadingImg(true)
-    const fd = new FormData()
-    fd.append("image", file)
-    fd.append("productId", productId)
-    const r = await fetch("/api/products/upload", { method:"POST", body: fd })
-    const d = await r.json()
-    setUploadingImg(false)
-    if (d.url) { setImgPreview(d.url); qc.invalidateQueries({queryKey:["admin-products"]}) }
-    return d
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to discontinue product')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      setDeleteConfirm(null)
+      toast('Product discontinued', 'success')
+    },
+    onError: () => toast('Failed to discontinue product', 'error'),
+  })
+
+  const handleStockSave = (productId: string) => {
+    if (!editingStock || editingStock.productId !== productId) return
+    const stock = parseInt(editingStock.value)
+    if (isNaN(stock) || stock < 0) {
+      toast('Invalid stock value', 'error')
+      return
+    }
+    updateStockMutation.mutate({ id: productId, stock })
   }
 
-  const products = data?.data ?? []
-  const totalPages = data?.totalPages ?? 1
-  const f = (k: string) => (e: any) => setForm(prev => ({...prev, [k]: e.target.value}))
-  const ef = (k: string) => (e: any) => setEditForm(prev => ({...prev, [k]: e.target.value}))
+  const products: ProductWithBrand[] = data?.data ?? []
+  const total: number = data?.total ?? 0
+  const totalPages: number = data?.totalPages ?? 1
 
-  const openEdit = (p: any) => {
-    setEditingProduct(p)
-    setImgPreview(p.images?.[0]?.url ?? null)
-    setEditForm({ name: p.name, unitCost: (p.unitCostPence/100).toFixed(2), rrp: (p.rrpPence/100).toFixed(2), cduSize: String(p.cduSize), description: p.description ?? "" })
+  const getStatusColour = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'success'
+      case 'LOW_STOCK': return 'warning'
+      case 'OUT_OF_STOCK': return 'danger'
+      case 'COMING_SOON': return 'info'
+      case 'DISCONTINUED': return 'default'
+      default: return 'default'
+    }
   }
-
-  const s: Record<string,any> = {
-    page: {padding:24,fontFamily:"system-ui,sans-serif"},
-    title: {fontSize:22,fontWeight:700,color:"#1A1A2E",margin:"0 0 4px"},
-    sub: {fontSize:13,color:"#8888AA",margin:"0 0 20px"},
-    rowBetween: {display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:16},
-    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
-    btnGhost: {display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
-    btnSm: {display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:6,fontSize:12,fontWeight:500,cursor:"pointer"},
-    searchBox: {display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:10,marginBottom:16},
-    card: {background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:12,boxShadow:"0 1px 4px rgba(0,0,0,.05)",overflow:"hidden"},
-    th: {background:"#F4F5F7",fontSize:10,fontWeight:600,textTransform:"uppercase" as const,letterSpacing:".06em",color:"#8888AA",padding:"10px 16px",textAlign:"left" as const,borderBottom:"1px solid rgba(0,0,0,.08)"},
-    td: {padding:"12px 16px",fontSize:13,borderBottom:"1px solid rgba(0,0,0,.06)",verticalAlign:"middle" as const},
-    overlay: {position:"fixed" as const,inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(2px)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
-    modal: {background:"white",borderRadius:16,padding:28,maxWidth:560,width:"100%",maxHeight:"90vh",overflowY:"auto" as const,boxShadow:"0 20px 60px rgba(0,0,0,.15)"},
-    modalTitle: {fontSize:18,fontWeight:700,color:"#1A1A2E",margin:"0 0 24px",display:"flex",alignItems:"center",justifyContent:"space-between"},
-    sLabel: {fontSize:10,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".08em",color:"#8888AA",margin:"0 0 12px",paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,.07)"},
-    grid2: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16},
-    fGroup: {marginBottom:14},
-    iLabel: {display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const,letterSpacing:".05em"},
-    input: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",boxSizing:"border-box" as const,background:"white"},
-    select: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",background:"white"},
-    btnRow: {display:"flex",gap:10,marginTop:24},
-    inputSm: {width:72,padding:"4px 8px",border:"1.5px solid #F0A3BC",borderRadius:6,fontSize:13,color:"#1A1A2E",outline:"none",textAlign:"center" as const},
-  }
-
-  // Image upload zone component
-  const ImageUploadZone = ({ productId }: { productId: string }) => (
-    <div style={{marginBottom:20}}>
-      <p style={s.sLabel}>Product Image</p>
-      <p style={{fontSize:11,color:"#8888AA",margin:"0 0 10px"}}>Display size: 6cm × 3.5cm · Max 5MB · JPG, PNG or WebP</p>
-      <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
-        {/* Preview */}
-        <div style={{
-          width:`${IMG_W}px`,height:`${IMG_H}px`,
-          border:"2px dashed rgba(0,0,0,.15)",borderRadius:10,
-          background:imgPreview?"transparent":"#FAFBFC",
-          display:"flex",alignItems:"center",justifyContent:"center",
-          overflow:"hidden",flexShrink:0,position:"relative" as const,cursor:"pointer"
-        }} onClick={()=>imgRef.current?.click()}>
-          {imgPreview ? (
-            <img src={imgPreview} alt="Product" style={{width:"100%",height:"100%",objectFit:"cover"}} />
-          ) : (
-            <div style={{textAlign:"center",padding:8}}>
-              <div style={{fontSize:24,marginBottom:4}}>🖼️</div>
-              <div style={{fontSize:11,color:"#8888AA"}}>Click to upload</div>
-              <div style={{fontSize:10,color:"#BBBBCC",marginTop:2}}>6cm × 3.5cm</div>
-            </div>
-          )}
-          {uploadingImg && (
-            <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <div style={{fontSize:12,color:"#F0A3BC",fontWeight:600}}>Uploading…</div>
-            </div>
-          )}
-        </div>
-        <div style={{flex:1}}>
-          <button style={{...s.btnGhost,marginBottom:8,width:"100%",justifyContent:"center"}} onClick={()=>imgRef.current?.click()} disabled={uploadingImg}>
-            {imgPreview ? "Change Image" : "Upload Image"}
-          </button>
-          {imgPreview && (
-            <button style={{...s.btnSm,width:"100%",justifyContent:"center",color:"#E11D48",borderColor:"rgba(225,29,72,.2)"}} onClick={()=>setImgPreview(null)}>
-              Remove
-            </button>
-          )}
-          <p style={{fontSize:11,color:"#8888AA",marginTop:8,lineHeight:1.5}}>Image will display at 6cm wide × 3.5cm tall on product cards.</p>
-        </div>
-      </div>
-      <input ref={imgRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:"none"}}
-        onChange={async e => {
-          const file = e.target.files?.[0]
-          if (!file) return
-          const preview = URL.createObjectURL(file)
-          setImgPreview(preview)
-          await handleImageUpload(file, productId)
-        }} />
-    </div>
-  )
 
   return (
-    <div style={s.page}>
-      <div style={s.rowBetween}>
-        <div><h1 style={s.title}>Products</h1><p style={s.sub}>{data?.total ?? 0} products</p></div>
-        <button style={s.btnPink} onClick={()=>setShowCreate(true)}>+ Add Product</button>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Products</h1>
+          <p className="text-sm text-gray-400 mt-0.5">{total.toLocaleString()} products total</p>
+        </div>
+        <Button onClick={() => setShowCreateModal(true)} icon={<Plus className="w-4 h-4" />}>
+          Add Product
+        </Button>
       </div>
 
-      <div style={s.searchBox}>
-        <span style={{color:"#8888AA",fontSize:16}}>🔍</span>
-        <input style={{border:"none",outline:"none",fontSize:13,color:"#1A1A2E",background:"transparent",flex:1}} placeholder="Search by name, SKU or brand…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} />
-        {search && <button onClick={()=>setSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:"#8888AA",fontSize:16}}>×</button>}
-      </div>
+      {/* Filters */}
+      <div className="card p-4 space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, SKU, or brand…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            className="w-full bg-bg-base border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand/50"
+          />
+        </div>
 
-      <div style={s.card}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead>
-            <tr>{["Image","Product","SKU","Type","Unit Cost","CDU","RRP","Stock","Status","Actions"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {isLoading ? <tr><td colSpan={10} style={{...s.td,textAlign:"center",color:"#8888AA",padding:32}}>Loading…</td></tr>
-            : products.length===0 ? <tr><td colSpan={10} style={{...s.td,textAlign:"center",color:"#8888AA",padding:48}}>No products found</td></tr>
-            : products.map((p: any) => (
-              <tr key={p.id}>
-                <td style={s.td}>
-                  <div style={{width:`${IMG_W*0.5}px`,height:`${IMG_H*0.5}px`,borderRadius:6,overflow:"hidden",background:"#F4F5F7",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    {p.images?.[0]?.url ? (
-                      <img src={p.images[0].url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover"}} />
-                    ) : <span style={{fontSize:20}}>🎁</span>}
-                  </div>
-                </td>
-                <td style={s.td}>
-                  <div style={{fontWeight:600,color:"#1A1A2E",marginBottom:2}}>{p.name}</div>
-                  <div style={{fontSize:11,color:"#8888AA"}}>{p.brand?.name}</div>
-                </td>
-                <td style={{...s.td,fontFamily:"monospace",fontSize:12,color:"#8888AA"}}>{p.sku}</td>
-                <td style={{...s.td,color:"#4A4A6A"}}>{p.productType?.replace(/_/g," ")}</td>
-                <td style={{...s.td,fontWeight:600}}>{formatCurrency(p.unitCostPence)}</td>
-                <td style={{...s.td,color:"#4A4A6A"}}>×{p.cduSize}</td>
-                <td style={{...s.td,color:"#8888AA"}}>{formatCurrency(p.rrpPence)}</td>
-                <td style={s.td}>
-                  {editStock?.id===p.id ? (
-                    <div style={{display:"flex",alignItems:"center",gap:4}}>
-                      <input style={s.inputSm} value={editStock.val} onChange={e=>setEditStock({id:p.id,val:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")updateMutation.mutate({id:p.id,stockUnits:parseInt(editStock.val)});if(e.key==="Escape")setEditStock(null)}} autoFocus />
-                      <button onClick={()=>updateMutation.mutate({id:p.id,stockUnits:parseInt(editStock.val)})} style={{background:"#0EA572",border:"none",color:"white",borderRadius:5,padding:"4px 7px",cursor:"pointer",fontSize:12}}>✓</button>
-                      <button onClick={()=>setEditStock(null)} style={{background:"none",border:"1px solid rgba(0,0,0,.12)",borderRadius:5,padding:"4px 7px",cursor:"pointer",fontSize:12,color:"#8888AA"}}>×</button>
-                    </div>
-                  ) : (
-                    <button onClick={()=>setEditStock({id:p.id,val:String(p.stockUnits)})} style={{background:"none",border:"none",cursor:"pointer",fontWeight:600,color:p.stockUnits===0?"#E11D48":p.stockUnits<=10?"#D97706":"#1A1A2E",fontSize:13,padding:0,display:"flex",alignItems:"center",gap:4}}>
-                      {p.stockUnits.toLocaleString()} <span style={{fontSize:11}}>✏️</span>
-                    </button>
-                  )}
-                </td>
-                <td style={s.td}>
-                  <select style={{...s.select,width:"auto",padding:"4px 8px",fontSize:12}} value={p.status} onChange={e=>updateMutation.mutate({id:p.id,status:e.target.value})}>
-                    {["ACTIVE","LOW_STOCK","OUT_OF_STOCK","COMING_SOON","DISCONTINUED"].map(st=><option key={st} value={st}>{st.replace(/_/g," ")}</option>)}
-                  </select>
-                </td>
-                <td style={s.td}>
-                  <button style={s.btnSm} onClick={()=>openEdit(p)}>✏️ Edit</button>
-                </td>
-              </tr>
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap">
+            {PRODUCT_TYPES.map(t => (
+              <button
+                key={t}
+                onClick={() => { setTypeFilter(t); setPage(1) }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  typeFilter === t
+                    ? 'bg-brand text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {t === 'ALL' ? 'All Types' : t.replace('_', ' ')}
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+          <div className="w-px bg-white/10" />
+          <div className="flex gap-1.5 flex-wrap">
+            {PRODUCT_STATUSES.map(s => (
+              <button
+                key={s}
+                onClick={() => { setStatusFilter(s); setPage(1) }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  statusFilter === s
+                    ? 'bg-brand text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {s === 'ALL' ? 'All Statuses' : s.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Product</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">SKU</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Type</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Unit Cost</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">CDU</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">RRP</th>
+                <th className="text-center text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Stock</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Status</th>
+                <th className="text-right text-xs font-medium text-gray-400 uppercase tracking-wider px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {isLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 9 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-white/5 rounded animate-pulse" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-16 text-gray-500">
+                    <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    No products found
+                  </td>
+                </tr>
+              ) : (
+                products.map((product) => (
+                  <tr key={product.id} className="hover:bg-white/2 transition-colors">
+                    {/* Product */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 overflow-hidden flex-shrink-0">
+                          {product.images?.[0] ? (
+                            <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-4 h-4 text-gray-600" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate max-w-[200px]">{product.name}</p>
+                          <p className="text-xs text-gray-500">{product.brand?.name}</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* SKU */}
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-mono text-gray-400">{product.sku}</span>
+                    </td>
+
+                    {/* Type */}
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-gray-400">{product.productType?.replace('_', ' ') ?? '—'}</span>
+                    </td>
+
+                    {/* Unit Cost */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm text-white">{formatCurrencyFromPounds(product.unitCostPence)}</span>
+                    </td>
+
+                    {/* CDU Size */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm text-gray-300">{product.cduSize}</span>
+                    </td>
+
+                    {/* RRP */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm text-gray-400">{formatCurrencyFromPounds(product.rrpPence)}</span>
+                    </td>
+
+                    {/* Stock — inline editable */}
+                    <td className="px-4 py-3 text-center">
+                      {editingStock?.productId === product.id ? (
+                        <div className="flex items-center gap-1 justify-center">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingStock.value}
+                            onChange={e => setEditingStock({ productId: product.id, value: e.target.value })}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleStockSave(product.id)
+                              if (e.key === 'Escape') setEditingStock(null)
+                            }}
+                            autoFocus
+                            className="w-16 text-center text-sm bg-bg-base border border-brand/50 rounded px-1 py-0.5 text-white focus:outline-none"
+                          />
+                          <button onClick={() => handleStockSave(product.id)} className="text-emerald-400 hover:text-emerald-300">
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setEditingStock(null)} className="text-gray-500 hover:text-gray-300">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingStock({ productId: product.id, value: product.stockUnits.toString() })}
+                          className="group flex items-center gap-1 mx-auto"
+                        >
+                          <span className={`text-sm font-medium ${
+                            product.stockUnits === 0 ? 'text-red-400' :
+                            product.stockUnits <= (product.lowStockThreshold ?? 10) ? 'text-amber-400' :
+                            'text-white'
+                          }`}>
+                            {product.stockUnits.toLocaleString()}
+                          </span>
+                          <Edit2 className="w-3 h-3 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      )}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      <select
+                        value={product.status}
+                        onChange={e => updateStatusMutation.mutate({ id: product.id, status: e.target.value })}
+                        className="bg-transparent text-xs border border-white/10 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-brand/50 cursor-pointer"
+                      >
+                        {['ACTIVE', 'LOW_STOCK', 'OUT_OF_STOCK', 'COMING_SOON', 'DISCONTINUED'].map(s => (
+                          <option key={s} value={s} className="bg-bg-surface">{s.replace('_', ' ')}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-right">
+                      {deleteConfirm === product.id ? (
+                        <div className="flex items-center gap-2 justify-end">
+                          <span className="text-xs text-gray-400">Discontinue?</span>
+                          <button
+                            onClick={() => deleteProductMutation.mutate(product.id)}
+                            className="text-xs text-red-400 hover:text-red-300 font-medium"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className="text-xs text-gray-500 hover:text-gray-300"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteConfirm(product.id)}
+                          className="text-gray-600 hover:text-red-400 transition-colors"
+                          title="Discontinue product"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,.08)"}}>
-            <span style={{fontSize:13,color:"#8888AA"}}>Page {page} of {totalPages}</span>
-            <div style={{display:"flex",gap:8}}>
-              <button style={{...s.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>← Prev</button>
-              <button style={{...s.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Next →</button>
+          <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
+            <p className="text-sm text-gray-400">
+              Page {page} of {totalPages} · {total.toLocaleString()} products
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                icon={<ChevronLeft className="w-4 h-4" />}
+              >
+                Prev
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* EDIT PRODUCT MODAL */}
-      {editingProduct && (
-        <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&(setEditingProduct(null),setImgPreview(null))}>
-          <div style={s.modal}>
-            <div style={s.modalTitle}>
-              <div>
-                <div style={{fontSize:16}}>Edit Product</div>
-                <div style={{fontSize:12,fontWeight:400,color:"#8888AA",marginTop:2,fontFamily:"monospace"}}>{editingProduct.sku}</div>
-              </div>
-              <button onClick={()=>{setEditingProduct(null);setImgPreview(null)}} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0,lineHeight:1}}>×</button>
-            </div>
+      {/* Create Product Modal */}
+      {showCreateModal && (
+        <CreateProductModal onClose={() => setShowCreateModal(false)} onSuccess={() => {
+          setShowCreateModal(false)
+          queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+        }} />
+      )}
+    </div>
+  )
+}
 
-            <ImageUploadZone productId={editingProduct.id} />
+function CreateProductModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({
+    name: '', sku: '', brandName: '', productType: 'BLIND_BOX',
+    unitCost: '', cduSize: '6', rrp: '', stockUnits: '0',
+    description: '',
+  })
+  const [loading, setLoading] = useState(false)
 
-            <p style={s.sLabel}>Product Details</p>
-            <div style={{...s.fGroup,marginBottom:14}}>
-              <label style={s.iLabel}>Product Name</label>
-              <input style={s.input} value={editForm.name} onChange={ef("name")} />
-            </div>
-            <div style={{...s.fGroup,marginBottom:16}}>
-              <label style={s.iLabel}>Description (optional)</label>
-              <textarea style={{...s.input,resize:"none" as const,height:60}} value={editForm.description} onChange={ef("description")} placeholder="Product description…" />
-            </div>
+  const handleSubmit = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          sku: form.sku,
+          brandName: form.brandName,
+          productType: form.productType,
+          unitCostPence: Math.round(parseFloat(form.unitCost) * 100),
+          cduSize: parseInt(form.cduSize),
+          rrpPence: Math.round(parseFloat(form.rrp) * 100),
+          stockUnits: parseInt(form.stockUnits),
+          description: form.description,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to create product')
+      toast('Product created', 'success')
+      onSuccess()
+    } catch {
+      toast('Failed to create product', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-            <p style={{...s.sLabel,marginTop:8}}>Pricing</p>
-            <div style={s.grid2}>
-              <div style={s.fGroup}>
-                <label style={s.iLabel}>Unit Cost (£)</label>
-                <input style={s.input} type="number" step="0.01" value={editForm.unitCost} onChange={ef("unitCost")} />
-                <div style={{fontSize:11,color:"#8888AA",marginTop:4}}>CDU cost: £{(parseFloat(editForm.unitCost||"0")*parseInt(editForm.cduSize||"1")).toFixed(2)}</div>
-              </div>
-              <div style={s.fGroup}>
-                <label style={s.iLabel}>RRP (£)</label>
-                <input style={s.input} type="number" step="0.01" value={editForm.rrp} onChange={ef("rrp")} />
-              </div>
-              <div style={s.fGroup}>
-                <label style={s.iLabel}>CDU Size</label>
-                <input style={s.input} type="number" min="1" value={editForm.cduSize} onChange={ef("cduSize")} />
-              </div>
-            </div>
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="card w-full max-w-lg p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Add Product</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
 
-            <div style={s.btnRow}>
-              <button style={{...s.btnGhost,flex:1}} onClick={()=>{setEditingProduct(null);setImgPreview(null)}}>Cancel</button>
-              <button style={{...s.btnPink,flex:1}} disabled={updateMutation.isPending} onClick={()=>updateMutation.mutate({
-                id:editingProduct.id, name:editForm.name, description:editForm.description||null,
-                unitCostPence:Math.round(parseFloat(editForm.unitCost)*100),
-                rrpPence:Math.round(parseFloat(editForm.rrp)*100),
-                cduSize:parseInt(editForm.cduSize),
-              })}>
-                {updateMutation.isPending?"Saving…":"Save Changes"}
-              </button>
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Input label="Product Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Labubu The Monsters Series 1" />
+          </div>
+          <Input label="SKU" value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} placeholder="e.g. POP-LBB-001" />
+          <Input label="Brand" value={form.brandName} onChange={e => setForm(f => ({ ...f, brandName: e.target.value }))} placeholder="e.g. POP MART" />
+
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">Type</label>
+            <select
+              value={form.productType}
+              onChange={e => setForm(f => ({ ...f, productType: e.target.value }))}
+              className="w-full bg-bg-base border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand/50"
+            >
+              {['BLIND_BOX', 'FIGURE', 'PLUSH', 'ACCESSORY', 'BUNDLE'].map(t => (
+                <option key={t} value={t} className="bg-bg-surface">{t.replace('_', ' ')}</option>
+              ))}
+            </select>
+          </div>
+
+          <Input
+            label="CDU Size"
+            type="number"
+            min="1"
+            value={form.cduSize}
+            onChange={e => setForm(f => ({ ...f, cduSize: e.target.value }))}
+            hint="Units per display box"
+          />
+
+          <Input
+            label="Unit Cost (£)"
+            type="number"
+            step="0.01"
+            value={form.unitCost}
+            onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))}
+            placeholder="0.00"
+          />
+          <Input
+            label="RRP (£)"
+            type="number"
+            step="0.01"
+            value={form.rrp}
+            onChange={e => setForm(f => ({ ...f, rrp: e.target.value }))}
+            placeholder="0.00"
+          />
+          <div className="col-span-2">
+            <Input
+              label="Opening Stock"
+              type="number"
+              min="0"
+              value={form.stockUnits}
+              onChange={e => setForm(f => ({ ...f, stockUnits: e.target.value }))}
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">Description</label>
+            <textarea
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              rows={3}
+              className="w-full bg-bg-base border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand/50 resize-none"
+              placeholder="Optional product description…"
+            />
           </div>
         </div>
-      )}
 
-      {/* CREATE PRODUCT MODAL */}
-      {showCreate && (
-        <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&setShowCreate(false)}>
-          <div style={s.modal}>
-            <div style={s.modalTitle}>Add Product <button onClick={()=>setShowCreate(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0,lineHeight:1}}>×</button></div>
-            <p style={{fontSize:12,color:"#8888AA",margin:"0 0 16px",background:"#F4F5F7",borderRadius:8,padding:"8px 12px"}}>💡 Create the product first, then use Edit to upload an image.</p>
-            <div style={s.grid2}>
-              <div style={{...s.fGroup,gridColumn:"1/-1"}}><label style={s.iLabel}>Product Name</label><input style={s.input} value={form.name} onChange={f("name")} placeholder="e.g. Labubu Series 1" /></div>
-              <div style={s.fGroup}><label style={s.iLabel}>SKU</label><input style={s.input} value={form.sku} onChange={f("sku")} placeholder="e.g. PM-LBB-001" /></div>
-              <div style={s.fGroup}><label style={s.iLabel}>Brand</label><input style={s.input} value={form.brandName} onChange={f("brandName")} placeholder="e.g. POP MART" /></div>
-              <div style={s.fGroup}><label style={s.iLabel}>Type</label><select style={s.select} value={form.productType} onChange={f("productType")}>{["BLIND_BOX","FIGURE","PLUSH","ACCESSORY","BUNDLE"].map(t=><option key={t} value={t}>{t.replace(/_/g," ")}</option>)}</select></div>
-              <div style={s.fGroup}><label style={s.iLabel}>CDU Size</label><input style={s.input} type="number" value={form.cduSize} onChange={f("cduSize")} /></div>
-              <div style={s.fGroup}><label style={s.iLabel}>Unit Cost (£)</label><input style={s.input} type="number" step="0.01" value={form.unitCost} onChange={f("unitCost")} placeholder="0.00" /></div>
-              <div style={s.fGroup}><label style={s.iLabel}>RRP (£)</label><input style={s.input} type="number" step="0.01" value={form.rrp} onChange={f("rrp")} placeholder="0.00" /></div>
-              <div style={s.fGroup}><label style={s.iLabel}>Opening Stock</label><input style={s.input} type="number" value={form.stockUnits} onChange={f("stockUnits")} /></div>
-            </div>
-            <div style={s.btnRow}>
-              <button style={{...s.btnGhost,flex:1}} onClick={()=>setShowCreate(false)}>Cancel</button>
-              <button style={{...s.btnPink,flex:1}} disabled={createMutation.isPending} onClick={()=>createMutation.mutate({name:form.name,sku:form.sku,brandName:form.brandName,productType:form.productType,unitCostPence:Math.round(parseFloat(form.unitCost)*100),rrpPence:Math.round(parseFloat(form.rrp)*100),cduSize:parseInt(form.cduSize),stockUnits:parseInt(form.stockUnits),badges:[]})}>{createMutation.isPending?"Creating…":"Create Product"}</button>
-            </div>
-          </div>
+        <div className="flex gap-3 pt-1">
+          <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
+          <Button onClick={handleSubmit} loading={loading} className="flex-1">Create Product</Button>
         </div>
-      )}
+      </div>
     </div>
   )
 }
