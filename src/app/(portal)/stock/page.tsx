@@ -178,8 +178,8 @@ export default function StockPage() {
                         {isAdded ? "✓ Added!" : "🛒 Add"}
                       </button>
                     </div>
-                    <button style={S.offerBtn} onClick={()=>{setOfferModal(p);setOfferPrice(((p.unitCostPence*0.85)/100).toFixed(2));setOfferQty(String(p.cduSize))}}>
-                      💬 Make an Offer
+                    <button style={{width:'100%',marginTop:6,padding:'8px 0',background:'#FFD020',border:'none',borderRadius:8,fontSize:12,fontWeight:700,color:'#1A1A2E',cursor:'pointer'}} onClick={()=>{setOfferModal(p);setOfferPrice(((p.unitCostPence*0.85)/100).toFixed(2));setOfferQty(String(p.cduSize))}}>
+                      Make an Offer
                     </button>
                     </>
                   )}
@@ -236,7 +236,15 @@ export default function StockPage() {
             </div>
             <div style={{marginBottom:14}}>
               <label style={S.lbl}>Quantity (units)</label>
-              <input type="number" min="1" value={offerQty} onChange={e=>setOfferQty(e.target.value)} style={S.inp} />
+              <div style={{display:"flex",alignItems:"center",gap:12,marginTop:6,border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,overflow:"hidden"}}>
+                <button onClick={()=>setOfferQty(q=>String(Math.max(offerModal.cduSize,parseInt(q||"0")-offerModal.cduSize)))} style={{padding:"10px 16px",background:"#F4F5F7",border:"none",fontSize:18,cursor:"pointer",color:"#4A4A6A"}}>-</button>
+                <div style={{flex:1,textAlign:"center"}}>
+                  <div style={{fontSize:18,fontWeight:700,color:"#1A1A2E"}}>{offerQty}</div>
+                  <div style={{fontSize:10,color:"#8888AA"}}>CDU size: {offerModal.cduSize}</div>
+                </div>
+                <button onClick={()=>setOfferQty(q=>String(parseInt(q||"0")+offerModal.cduSize))} style={{padding:"10px 16px",background:"#F4F5F7",border:"none",fontSize:18,cursor:"pointer",color:"#4A4A6A"}}>+</button>
+              </div>
+              <div style={{fontSize:11,color:"#8888AA",marginTop:5,textAlign:"center"}}>{Math.ceil(parseInt(offerQty||"0")/offerModal.cduSize)} CDU · {offerPrice?new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(parseFloat(offerPrice)*parseInt(offerQty||"0"))+" total":""}</div>
             </div>
             <div style={{marginBottom:20}}>
               <label style={S.lbl}>Note (optional)</label>
