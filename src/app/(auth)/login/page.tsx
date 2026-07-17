@@ -38,99 +38,124 @@ function LoginForm() {
     else { setRegError(d.error ?? "Failed to submit application") }
   }
 
-  const css = `
-    .lp{min-height:100vh;background:url("https://static.wixstatic.com/media/e2bfa5_32827018d0c54f16820ef6b8dd3d4ca4~mv2.png/v1/fill/w_2646,h_1077,al_c,q_95,enc_avif,quality_auto/e2bfa5_32827018d0c54f16820ef6b8dd3d4ca4~mv2.png") center center/cover no-repeat;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;position:relative;overflow:hidden}
-    .b1{position:absolute;top:-10%;right:-5%;width:400px;height:400px;border-radius:50%;background:rgba(136,221,225,.15);filter:blur(60px);pointer-events:none}
-    
-    .lbox{width:100%;max-width:400px;position:relative;z-index:1}
-    .logo{text-align:center;margin-bottom:28px}
-    .logo-t{font-size:26px;font-weight:800;color:white;letter-spacing:-.5px;text-shadow:0 2px 12px rgba(0,0,0,.3)}
-    .logo-t span{color:#88dde1}
-    .logo-s{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-top:4px}
-    .card{background:rgba(255,255,255,.12);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.3)}
-    .tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:20px}
-    .tab{flex:1;padding:10px 0;text-align:center;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
-    .tab.on{color:#88dde1;border-bottom-color:#88dde1;font-weight:600}
-    .fg{margin-bottom:16px}
-    .fl{display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
-    .fi{width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.2);border-radius:10px;font-size:14px;color:white;outline:none;box-sizing:border-box;transition:all .15s;background:rgba(255,255,255,.1);backdrop-filter:blur(4px)}
-    .fi:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.2);background:rgba(255,255,255,.12)}.fi::placeholder{color:rgba(255,255,255,.25)}
-    .pw{position:relative}
-    .pt{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8888AA;font-size:16px;padding:0}
-    .err{background:rgba(225,29,72,.15);border:1px solid rgba(225,29,72,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#ff8097;margin-bottom:16px}
-    .ok{background:rgba(14,165,114,.12);border:1px solid rgba(14,165,114,.25);border-radius:12px;padding:20px;font-size:13px;color:#4ade80;margin-bottom:16px;text-align:center}
-    .sb{width:100%;padding:12px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
-    .sb:hover{background:#5ecfd4}
-    .sb:disabled{opacity:.6;cursor:not-allowed}
-    .req{color:#88dde1;margin-left:2px}
-    .foot{text-align:center;font-size:12px;color:rgba(255,255,255,.5);margin-top:16px}
-  `
-
   return (
-    <div>
-      <style dangerouslySetInnerHTML={{__html: css}} />
-      <div className="lp">
-        <div className="overlay" />
-        <div className="lbox">
-          <div className="logo">
-            <div className="logo-t">collect<span>&amp;</span>display</div>
-            <div className="logo-s">Distribution Portal</div>
-          </div>
-          <div className="card">
-            <div className="tabs">
-              <button className={"tab"+(mode==="login"?" on":"")} onClick={()=>{setMode("login");setError("");setRegError("")}}>Sign In</button>
-              <button className={"tab"+(mode==="register"?" on":"")} onClick={()=>{setMode("register");setError("");setRegError("")}}>Apply for Account</button>
-            </div>
+    <div style={{minHeight:"100vh",background:"#080c14",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"system-ui,sans-serif",position:"relative",overflow:"hidden"}}>
 
-            {mode==="login" ? (
-              <div>
-                <div className="fg">
-                  <label className="fl">Email address</label>
-                  <input className="fi" type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="you@yourstore.co.uk" autoComplete="email" />
-                </div>
-                <div className="fg">
-                  <label className="fl">Password</label>
-                  <div className="pw">
-                    <input className="fi" type={showPassword?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="Enter your password" style={{paddingRight:40}} />
-                    <button className="pt" type="button" onClick={()=>setShowPassword(v=>!v)}>{showPassword?"🙈":"👁"}</button>
-                  </div>
-                </div>
-                {error && <div className="err">{error}</div>}
-                <button className="sb" onClick={handleLogin} disabled={loading}>{loading?"Signing in…":"Sign in"}</button>
-              </div>
-            ) : regSuccess ? (
-              <div className="ok">
-                <div style={{fontSize:32,marginBottom:10}}>✅</div>
-                <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Application submitted!</div>
-                <div style={{color:"#4A4A6A",lineHeight:1.6}}>Thank you for applying. We will review your application and be in touch within 1–2 business days.</div>
-                <button onClick={()=>{setRegSuccess(false);setMode("login");setRegForm({businessName:"",contactName:"",email:"",phone:""})}} style={{marginTop:14,padding:"8px 16px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Back to Sign In</button>
-              </div>
-            ) : (
-              <div>
-                <div className="fg">
-                  <label className="fl">Company Name <span className="req">*</span></label>
-                  <input className="fi" value={regForm.businessName} onChange={e=>setRegForm(f=>({...f,businessName:e.target.value}))} placeholder="e.g. Galaxy Collectibles Ltd" />
-                </div>
-                <div className="fg">
-                  <label className="fl">Full Name <span className="req">*</span></label>
-                  <input className="fi" value={regForm.contactName} onChange={e=>setRegForm(f=>({...f,contactName:e.target.value}))} placeholder="Your full name" />
-                </div>
-                <div className="fg">
-                  <label className="fl">Email Address <span className="req">*</span></label>
-                  <input className="fi" type="email" value={regForm.email} onChange={e=>setRegForm(f=>({...f,email:e.target.value}))} placeholder="you@yourstore.co.uk" />
-                </div>
-                <div className="fg">
-                  <label className="fl">Phone Number</label>
-                  <input className="fi" type="tel" value={regForm.phone} onChange={e=>setRegForm(f=>({...f,phone:e.target.value}))} placeholder="+44 7700 900000" />
-                </div>
-                {regError && <div className="err">{regError}</div>}
-                <button className="sb" onClick={handleRegister} disabled={regSubmitting}>{regSubmitting?"Submitting…":"Submit Application"}</button>
-                <p className="foot" style={{marginTop:12}}>We review all applications within 1–2 business days.</p>
-              </div>
-            )}
+      {/* Animated orbs */}
+      <style>{`
+        @keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(80px,-60px) scale(1.2)}66%{transform:translate(-50px,70px) scale(.85)}}
+        @keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-80px,60px) scale(1.15)}66%{transform:translate(60px,-80px) scale(.9)}}
+        @keyframes orb3{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(50px,80px) scale(.9)}66%{transform:translate(-60px,-50px) scale(1.25)}}
+        @keyframes orb4{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-40px,-60px) scale(1.1)}66%{transform:translate(70px,40px) scale(.9)}}
+        @keyframes orb5{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,40px) scale(.85)}66%{transform:translate(-70px,-30px) scale(1.15)}}
+        .fi::placeholder{color:rgba(255,255,255,.25)}
+        .fi:focus{outline:none;border-color:#88dde1 !important;box-shadow:0 0 0 3px rgba(136,221,225,.2);background:rgba(255,255,255,.12) !important}
+        .sb:hover{background:#5ecfd4 !important}
+        .sb:disabled{opacity:.6;cursor:not-allowed}
+        .tab-on{color:#88dde1 !important;border-bottom-color:#88dde1 !important;font-weight:600 !important}
+      `}</style>
+
+      {/* Orb 1 - cyan */}
+      <div style={{position:"absolute",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,rgba(136,221,225,.55),transparent 70%)",top:-150,left:-150,filter:"blur(60px)",animation:"orb1 12s ease-in-out infinite"}} />
+      {/* Orb 2 - purple */}
+      <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(168,130,255,.5),transparent 70%)",bottom:-100,right:-100,filter:"blur(60px)",animation:"orb2 14s ease-in-out infinite"}} />
+      {/* Orb 3 - blue */}
+      <div style={{position:"absolute",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle,rgba(79,195,247,.45),transparent 70%)",top:"35%",left:"35%",filter:"blur(70px)",animation:"orb3 10s ease-in-out infinite"}} />
+      {/* Orb 4 - teal */}
+      <div style={{position:"absolute",width:350,height:350,borderRadius:"50%",background:"radial-gradient(circle,rgba(100,220,200,.4),transparent 70%)",bottom:"5%",left:"-5%",filter:"blur(60px)",animation:"orb4 11s ease-in-out infinite"}} />
+      {/* Orb 5 - violet */}
+      <div style={{position:"absolute",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(206,147,216,.45),transparent 70%)",top:"5%",right:"8%",filter:"blur(60px)",animation:"orb5 13s ease-in-out infinite reverse"}} />
+
+      {/* Card */}
+      <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
+
+        {/* Logo */}
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontSize:26,fontWeight:800,color:"white",letterSpacing:"-.5px"}}>
+            collect<span style={{color:"#88dde1"}}>&</span>display
           </div>
-          {mode==="login" && <p className="foot">Need an account? <button onClick={()=>setMode("register")} style={{background:"none",border:"none",cursor:"pointer",color:"#88dde1",fontSize:12,padding:0,fontWeight:500}}>Apply here →</button></p>}
+          <div style={{fontSize:11,fontWeight:600,letterSpacing:".12em",textTransform:"uppercase" as const,color:"rgba(255,255,255,.4)",marginTop:4}}>
+            Distribution Portal
+          </div>
         </div>
+
+        <div style={{background:"rgba(255,255,255,.07)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",border:"1px solid rgba(255,255,255,.1)",borderRadius:20,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,.5)"}}>
+
+          {/* Tabs */}
+          <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.1)",marginBottom:20}}>
+            {[["login","Sign In"],["register","Apply for Account"]].map(([id,label])=>(
+              <button key={id} onClick={()=>{setMode(id);setError("");setRegError("")}}
+                className={mode===id?"tab-on":""}
+                style={{flex:1,padding:"10px 0",textAlign:"center" as const,fontSize:13,fontWeight:500,color:"rgba(255,255,255,.38)",background:"none",border:"none",cursor:"pointer",borderBottom:"2px solid transparent",marginBottom:-1,transition:"all .2s"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {mode==="login" ? (
+            <div>
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase" as const,letterSpacing:".05em"}}>Email address</label>
+                <input className="fi" type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="you@yourstore.co.uk" autoComplete="email"
+                  style={{width:"100%",padding:"11px 14px",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:10,fontSize:14,color:"white",boxSizing:"border-box" as const,background:"rgba(255,255,255,.08)",transition:"all .15s",fontFamily:"inherit"}} />
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase" as const,letterSpacing:".05em"}}>Password</label>
+                <div style={{position:"relative" as const}}>
+                  <input className="fi" type={showPassword?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="Enter your password" style={{width:"100%",padding:"11px 40px 11px 14px",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:10,fontSize:14,color:"white",boxSizing:"border-box" as const,background:"rgba(255,255,255,.08)",transition:"all .15s",fontFamily:"inherit"}} />
+                  <button type="button" onClick={()=>setShowPassword(v=>!v)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,.4)",fontSize:16,padding:0}}>
+                    {showPassword?"🙈":"👁"}
+                  </button>
+                </div>
+              </div>
+              {error && <div style={{background:"rgba(225,29,72,.15)",border:"1px solid rgba(225,29,72,.3)",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#ff8097",marginBottom:16}}>{error}</div>}
+              <button className="sb" onClick={handleLogin} disabled={loading}
+                style={{width:"100%",padding:12,background:"#88dde1",color:"#0a1420",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",letterSpacing:".02em",transition:"background .15s"}}>
+                {loading?"Signing in…":"Sign in"}
+              </button>
+            </div>
+          ) : regSuccess ? (
+            <div style={{background:"rgba(14,165,114,.12)",border:"1px solid rgba(14,165,114,.25)",borderRadius:12,padding:20,fontSize:13,color:"#4ade80",textAlign:"center" as const}}>
+              <div style={{fontSize:32,marginBottom:10}}>✅</div>
+              <div style={{fontWeight:700,fontSize:15,marginBottom:6,color:"white"}}>Application submitted!</div>
+              <div style={{color:"rgba(255,255,255,.5)",lineHeight:1.6}}>Thank you. We will review your application and be in touch within 1–2 business days.</div>
+              <button onClick={()=>{setRegSuccess(false);setMode("login");setRegForm({businessName:"",contactName:"",email:"",phone:""})}}
+                style={{marginTop:14,padding:"8px 16px",background:"#88dde1",color:"#0a1420",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>
+                Back to Sign In
+              </button>
+            </div>
+          ) : (
+            <div>
+              {[
+                {k:"businessName",label:"Company Name *",placeholder:"e.g. Galaxy Collectibles Ltd",type:"text"},
+                {k:"contactName",label:"Full Name *",placeholder:"Your full name",type:"text"},
+                {k:"email",label:"Email Address *",placeholder:"you@yourstore.co.uk",type:"email"},
+                {k:"phone",label:"Phone Number",placeholder:"+44 7700 900000",type:"tel"},
+              ].map(({k,label,placeholder,type})=>(
+                <div key={k} style={{marginBottom:14}}>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase" as const,letterSpacing:".05em"}}>{label}</label>
+                  <input className="fi" type={type} value={(regForm as any)[k]} onChange={e=>setRegForm(f=>({...f,[k]:e.target.value}))} placeholder={placeholder}
+                    style={{width:"100%",padding:"11px 14px",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:10,fontSize:14,color:"white",boxSizing:"border-box" as const,background:"rgba(255,255,255,.08)",fontFamily:"inherit"}} />
+                </div>
+              ))}
+              {regError && <div style={{background:"rgba(225,29,72,.15)",border:"1px solid rgba(225,29,72,.3)",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#ff8097",marginBottom:16}}>{regError}</div>}
+              <button className="sb" onClick={handleRegister} disabled={regSubmitting}
+                style={{width:"100%",padding:12,background:"#88dde1",color:"#0a1420",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",letterSpacing:".02em",transition:"background .15s"}}>
+                {regSubmitting?"Submitting…":"Submit Application"}
+              </button>
+              <p style={{textAlign:"center" as const,fontSize:12,color:"rgba(255,255,255,.3)",marginTop:12}}>We review all applications within 1–2 business days.</p>
+            </div>
+          )}
+        </div>
+
+        {mode==="login" && (
+          <p style={{textAlign:"center" as const,fontSize:12,color:"rgba(255,255,255,.3)",marginTop:16}}>
+            Need an account?{" "}
+            <button onClick={()=>setMode("register")} style={{background:"none",border:"none",cursor:"pointer",color:"#88dde1",fontSize:12,padding:0,fontWeight:500}}>
+              Apply here →
+            </button>
+          </p>
+        )}
       </div>
     </div>
   )
@@ -138,7 +163,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:24,height:24,border:"2px solid #88dde1",borderTopColor:"transparent",borderRadius:"50%"}} /></div>}>
+    <Suspense fallback={<div style={{minHeight:"100vh",background:"#080c14",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:24,height:24,border:"2px solid #88dde1",borderTopColor:"transparent",borderRadius:"50%"}} /></div>}>
       <LoginForm />
     </Suspense>
   )
