@@ -349,7 +349,11 @@ model ProductOffer {
   @@index([status])
 }
 
-enum ApplicationStatus { PENDING APPROVED DECLINED }
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
 
 model RetailerApplication {
   id          String            @id @default(cuid())
