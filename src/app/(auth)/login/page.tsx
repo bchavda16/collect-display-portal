@@ -40,27 +40,27 @@ function LoginForm() {
 
   const css = `
     .lp{min-height:100vh;background:white;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;position:relative;overflow:hidden}
-    .b1{position:absolute;top:-10%;right:-5%;width:400px;height:400px;border-radius:50%;background:rgba(240,163,188,.15);filter:blur(60px);pointer-events:none}
+    .b1{position:absolute;top:-10%;right:-5%;width:400px;height:400px;border-radius:50%;background:rgba(136,221,225,.15);filter:blur(60px);pointer-events:none}
     .b2{position:absolute;bottom:-10%;left:-5%;width:350px;height:350px;border-radius:50%;background:rgba(92,200,197,.12);filter:blur(60px);pointer-events:none}
     .lbox{width:100%;max-width:400px;position:relative;z-index:1}
     .logo{text-align:center;margin-bottom:28px}
     .logo-t{font-size:26px;font-weight:800;color:#1A1A2E;letter-spacing:-.5px}
-    .logo-t span{color:#F0A3BC}
+    .logo-t span{color:#88dde1}
     .logo-s{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8888AA;margin-top:4px}
     .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:16px;padding:28px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
     .tabs{display:flex;border-bottom:2px solid rgba(0,0,0,.08);margin-bottom:20px}
     .tab{flex:1;padding:10px 0;text-align:center;font-size:13px;font-weight:500;color:#8888AA;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
-    .tab.on{color:#F0A3BC;border-bottom-color:#F0A3BC;font-weight:600}
+    .tab.on{color:#88dde1;border-bottom-color:#88dde1;font-weight:600}
     .fg{margin-bottom:16px}
     .fl{display:block;font-size:11px;font-weight:600;color:#4A4A6A;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
     .fi{width:100%;padding:11px 14px;border:1.5px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;color:#1A1A2E;outline:none;box-sizing:border-box;transition:border-color .15s}
-    .fi:focus{border-color:#F0A3BC;box-shadow:0 0 0 3px rgba(240,163,188,.15)}
+    .fi:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.15)}
     .pw{position:relative}
     .pt{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8888AA;font-size:16px;padding:0}
     .err{background:#FFF1F4;border:1px solid rgba(225,29,72,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#E11D48;margin-bottom:16px}
     .ok{background:#EAFAF3;border:1px solid rgba(14,165,114,.2);border-radius:12px;padding:20px;font-size:13px;color:#0EA572;margin-bottom:16px;text-align:center}
-    .sb{width:100%;padding:12px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
-    .sb:hover{background:#E88BAA}
+    .sb{width:100%;padding:12px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+    .sb:hover{background:#5ecfd4}
     .sb:disabled{opacity:.6;cursor:not-allowed}
     .req{color:#E11D48;margin-left:2px}
     .foot{text-align:center;font-size:12px;color:#8888AA;margin-top:16px}
@@ -104,7 +104,7 @@ function LoginForm() {
                 <div style={{fontSize:32,marginBottom:10}}>✅</div>
                 <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Application submitted!</div>
                 <div style={{color:"#4A4A6A",lineHeight:1.6}}>Thank you for applying. We will review your application and be in touch within 1–2 business days.</div>
-                <button onClick={()=>{setRegSuccess(false);setMode("login");setRegForm({businessName:"",contactName:"",email:"",phone:""})}} style={{marginTop:14,padding:"8px 16px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Back to Sign In</button>
+                <button onClick={()=>{setRegSuccess(false);setMode("login");setRegForm({businessName:"",contactName:"",email:"",phone:""})}} style={{marginTop:14,padding:"8px 16px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Back to Sign In</button>
               </div>
             ) : (
               <div>
@@ -130,7 +130,7 @@ function LoginForm() {
               </div>
             )}
           </div>
-          {mode==="login" && <p className="foot">Need an account? <button onClick={()=>setMode("register")} style={{background:"none",border:"none",cursor:"pointer",color:"#F0A3BC",fontSize:12,padding:0,fontWeight:500}}>Apply here →</button></p>}
+          {mode==="login" && <p className="foot">Need an account? <button onClick={()=>setMode("register")} style={{background:"none",border:"none",cursor:"pointer",color:"#88dde1",fontSize:12,padding:0,fontWeight:500}}>Apply here →</button></p>}
         </div>
       </div>
     </div>
@@ -139,7 +139,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:24,height:24,border:"2px solid #F0A3BC",borderTopColor:"transparent",borderRadius:"50%"}} /></div>}>
+    <Suspense fallback={<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:24,height:24,border:"2px solid #88dde1",borderTopColor:"transparent",borderRadius:"50%"}} /></div>}>
       <LoginForm />
     </Suspense>
   )

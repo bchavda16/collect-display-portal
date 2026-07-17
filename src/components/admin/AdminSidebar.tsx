@@ -22,7 +22,7 @@ const s = {
   logoSub: { fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8888AA', marginTop: 2 },
   nav: { flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column' as const, gap: 2, overflowY: 'auto' as const },
   navItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#4A4A6A', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
-  navActive: { background: '#FDE8EF', color: '#C4638A', fontWeight: 600 },
+  navActive: { background: '#e6f9fa', color: '#1a9da3', fontWeight: 600 },
   footer: { padding: '10px', borderTop: '1px solid rgba(0,0,0,0.08)' },
   userRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' },
   avatar: { width: 28, height: 28, borderRadius: '50%', background: '#E8F8F7', border: '1px solid rgba(92,200,197,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#3A9E9B', flexShrink: 0 },
@@ -37,9 +37,9 @@ export function AdminSidebar() {
     <aside style={s.sidebar}>
       <div style={s.logoArea}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 3, height: 28, borderRadius: 99, background: 'linear-gradient(135deg, #F0A3BC, #5CC8C5)' }} />
+          <div style={{ width: 3, height: 28, borderRadius: 99, background: 'linear-gradient(135deg, #88dde1, #5CC8C5)' }} />
           <div>
-            <div style={s.logoText}>collect<span style={{ color: '#F0A3BC' }}>&</span>display</div>
+            <div style={s.logoText}>collect<span style={{ color: '#88dde1' }}>&</span>display</div>
             <div style={s.logoSub}><span style={{ color: '#3A9E9B' }}>Admin</span> Panel</div>
           </div>
         </div>

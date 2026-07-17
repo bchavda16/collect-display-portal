@@ -106,7 +106,7 @@ export default function AdminImportsPage() {
     title: {fontSize:22,fontWeight:700,color:"#1A1A2E",margin:"0 0 4px"},
     sub: {fontSize:13,color:"#8888AA",margin:"0 0 24px"},
     card: {background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:12,boxShadow:"0 1px 4px rgba(0,0,0,.05)"},
-    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px 20px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px 20px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
     btnGhost: {display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
     btnTeal: {display:"inline-flex",alignItems:"center",gap:6,padding:"10px 20px",background:"#5CC8C5",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
     th: {background:"#F4F5F7",fontSize:10,fontWeight:600,textTransform:"uppercase" as const,letterSpacing:".06em",color:"#8888AA",padding:"9px 12px",textAlign:"left" as const,borderBottom:"1px solid rgba(0,0,0,.08)",whiteSpace:"nowrap" as const},
@@ -131,7 +131,7 @@ export default function AdminImportsPage() {
         <p style={s.label}>Required columns</p>
         <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,marginBottom:12}}>
           {REQUIRED_COLS.map(c=>(
-            <span key={c} style={{background:"#FDE8F1",color:"#C4638A",border:"1px solid rgba(240,163,188,.3)",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,fontFamily:"monospace"}}>{c}</span>
+            <span key={c} style={{background:"#e0f7f8",color:"#1a9da3",border:"1px solid rgba(136,221,225,.3)",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,fontFamily:"monospace"}}>{c}</span>
           ))}
         </div>
         <p style={{...s.label,marginTop:4}}>Optional columns</p>
@@ -149,9 +149,9 @@ export default function AdminImportsPage() {
       {step === "upload" && (
         <div
           style={{
-            border:`2px dashed ${dragging?"#F0A3BC":"rgba(0,0,0,.15)"}`,
+            border:`2px dashed ${dragging?"#88dde1":"rgba(0,0,0,.15)"}`,
             borderRadius:16,padding:"56px 24px",textAlign:"center",
-            background:dragging?"#FDE8F1":"#FAFBFC",
+            background:dragging?"#e0f7f8":"#FAFBFC",
             cursor:"pointer",transition:"all .15s"
           }}
           onClick={()=>inputRef.current?.click()}
@@ -276,7 +276,7 @@ export default function AdminImportsPage() {
               ["Brand auto-created", "If the brand doesn't exist it will be created automatically"],
             ].map(([title,desc])=>(
               <div key={title} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-                <span style={{color:"#F0A3BC",fontSize:14,flexShrink:0,marginTop:1}}>→</span>
+                <span style={{color:"#88dde1",fontSize:14,flexShrink:0,marginTop:1}}>→</span>
                 <div><span style={{fontSize:12,fontWeight:600,color:"#1A1A2E"}}>{title}:</span><span style={{fontSize:12,color:"#8888AA"}}> {desc}</span></div>
               </div>
             ))}

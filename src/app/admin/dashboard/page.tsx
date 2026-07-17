@@ -48,7 +48,7 @@ export default async function AdminDashboardPage() {
         .db-badge { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
         .db-right-card { background: white; border: 1px solid rgba(0,0,0,0.09); border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 14px; }
         .db-stock-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
-        .db-qa-btn { display: block; padding: 9px 14px; background: white; border: 1px solid #F0A3BC; border-radius: 8px; font-size: 13px; font-weight: 500; color: #F0A3BC; text-decoration: none; text-align: center; margin-bottom: 8px; }
+        .db-qa-btn { display: block; padding: 9px 14px; background: white; border: 1px solid #88dde1; border-radius: 8px; font-size: 13px; font-weight: 500; color: #88dde1; text-decoration: none; text-align: center; margin-bottom: 8px; }
       `}</style>
       <div className="db-wrap">
         <h1 className="db-title">Dashboard</h1>
@@ -92,7 +92,7 @@ export default async function AdminDashboardPage() {
                     <tr><td colSpan={5} style={{textAlign:"center",color:"#8888AA"}}>No orders yet</td></tr>
                   ) : orders.map(o => (
                     <tr key={o.id}>
-                      <td style={{fontWeight:600,color:"#C4638A"}}>{o.orderNumber}</td>
+                      <td style={{fontWeight:600,color:"#1a9da3"}}>{o.orderNumber}</td>
                       <td style={{color:"#4A4A6A"}}>{o.retailer.businessName}</td>
                       <td style={{fontWeight:500}}>{formatCurrency(o.totalPence)}</td>
                       <td style={{color:"#4A4A6A"}}>{o._count.items}</td>

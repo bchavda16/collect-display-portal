@@ -38,9 +38,9 @@ export default function MyOffersPage() {
   const S: any = {
     wrap: {padding:24,fontFamily:"system-ui,sans-serif",maxWidth:800},
     card: {background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:14,padding:18,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.04)"},
-    chip: (a:boolean) => ({padding:"5px 14px",borderRadius:99,fontSize:12,fontWeight:500,background:a?"#F0A3BC":"#F4F5F7",color:a?"white":"#4A4A6A",border:"none",cursor:"pointer"}),
+    chip: (a:boolean) => ({padding:"5px 14px",borderRadius:99,fontSize:12,fontWeight:500,background:a?"#88dde1":"#F4F5F7",color:a?"white":"#4A4A6A",border:"none",cursor:"pointer"}),
     badge: (s:string) => ({display:"inline-flex",padding:"3px 10px",borderRadius:99,fontSize:11,fontWeight:600,background:STATUS[s]?.bg??"#F4F5F7",color:STATUS[s]?.color??"#8888AA"}),
-    btnPink: {padding:"8px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"},
+    btnPink: {padding:"8px 18px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"},
     btnRed: {padding:"8px 14px",background:"white",color:"#E11D48",border:"1px solid rgba(225,29,72,.2)",borderRadius:8,fontSize:12,fontWeight:500,cursor:"pointer"},
   }
 
@@ -93,10 +93,10 @@ export default function MyOffersPage() {
                     <div style={{fontSize:10,color:"#8888AA",marginBottom:2}}>Listed price</div>
                     <div style={{fontSize:13,fontWeight:600,color:"#8888AA"}}>{fmt(offer.product?.unitCostPence)}</div>
                   </div>
-                  <div style={{textAlign:"center" as const,padding:"7px 12px",background:"#FDE8F1",borderRadius:8,border:"1px solid rgba(240,163,188,.3)"}}>
-                    <div style={{fontSize:10,color:"#C4638A",marginBottom:2}}>Your offer</div>
-                    <div style={{fontSize:13,fontWeight:700,color:"#C4638A"}}>{fmt(offer.offeredPricePence)}</div>
-                    <div style={{fontSize:10,color:"#C4638A"}}>Save {fmt(savings)}/unit</div>
+                  <div style={{textAlign:"center" as const,padding:"7px 12px",background:"#e0f7f8",borderRadius:8,border:"1px solid rgba(136,221,225,.3)"}}>
+                    <div style={{fontSize:10,color:"#1a9da3",marginBottom:2}}>Your offer</div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#1a9da3"}}>{fmt(offer.offeredPricePence)}</div>
+                    <div style={{fontSize:10,color:"#1a9da3"}}>Save {fmt(savings)}/unit</div>
                   </div>
                   {offer.counterPricePence && (
                     <div style={{textAlign:"center" as const,padding:"7px 12px",background:"#F3EEFF",borderRadius:8,border:"1px solid rgba(124,58,237,.2)"}}>

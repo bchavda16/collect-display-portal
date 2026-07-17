@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    --pink: #F0A3BC;
-    --pink-hover: #E88BAA;
-    --pink-dark: #C4638A;
-    --pink-light: #FDE8EF;
+    --pink: #88dde1;
+    --pink-hover: #5ecfd4;
+    --pink-dark: #1a9da3;
+    --pink-light: #e6f9fa;
     --teal: #5CC8C5;
     --teal-dark: #3A9E9B;
     --teal-light: #E8F8F7;
@@ -33,7 +33,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  ::selection { background: rgba(240,163,188,0.3); }
+  ::selection { background: rgba(136,221,225,0.3); }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -112,7 +112,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(240,163,188,0.6), rgba(92,200,197,0.6));
+    background: linear-gradient(135deg, rgba(136,221,225,0.6), rgba(92,200,197,0.6));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;

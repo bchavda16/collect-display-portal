@@ -51,7 +51,7 @@ export function OrderExportButton({ orderNumber, items }: Props) {
       fontSize:13,fontWeight:500,color:"#1A1A2E",cursor:"pointer",
       transition:"all .15s",
     }}
-    onMouseEnter={e=>{e.currentTarget.style.borderColor="#F0A3BC";e.currentTarget.style.color="#C4638A"}}
+    onMouseEnter={e=>{e.currentTarget.style.borderColor="#88dde1";e.currentTarget.style.color="#1a9da3"}}
     onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,.12)";e.currentTarget.style.color="#1A1A2E"}}
     >
       📥 Export to Excel

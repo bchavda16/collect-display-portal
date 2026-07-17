@@ -88,8 +88,8 @@ export default function AdminOrdersPage() {
     modal: {background:"white",borderRadius:16,padding:28,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto" as const,boxShadow:"0 20px 60px rgba(0,0,0,.15)"},
     input: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",boxSizing:"border-box" as const,background:"white"},
     select: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",background:"white"},
-    inputSm: {padding:"5px 8px",border:"1.5px solid #F0A3BC",borderRadius:6,fontSize:12,color:"#1A1A2E",outline:"none",width:80,textAlign:"center" as const},
-    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"9px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    inputSm: {padding:"5px 8px",border:"1.5px solid #88dde1",borderRadius:6,fontSize:12,color:"#1A1A2E",outline:"none",width:80,textAlign:"center" as const},
+    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"9px 18px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
     btnGhost: {display:"inline-flex",alignItems:"center",padding:"7px 14px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
     btnSm: {display:"inline-flex",alignItems:"center",gap:4,padding:"4px 10px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:6,fontSize:12,fontWeight:500,cursor:"pointer"},
     btnDanger: {display:"inline-flex",alignItems:"center",padding:"4px 10px",background:"white",color:"#E11D48",border:"1px solid rgba(225,29,72,.2)",borderRadius:6,fontSize:12,fontWeight:500,cursor:"pointer"},
@@ -97,7 +97,7 @@ export default function AdminOrdersPage() {
 
   const chipStyle = (active: boolean) => ({
     padding:"5px 12px",borderRadius:99,fontSize:12,fontWeight:500,
-    background:active?"#F0A3BC":"#F4F5F7",color:active?"white":"#4A4A6A",
+    background:active?"#88dde1":"#F4F5F7",color:active?"white":"#4A4A6A",
     border:"none",cursor:"pointer" as const
   })
 
@@ -133,14 +133,14 @@ export default function AdminOrdersPage() {
               const sc = STATUS_COLORS[o.status] ?? {bg:"#F4F5F7",color:"#8888AA"}
               return (
                 <>
-                <tr key={o.id} style={{background:isExpanded?"rgba(240,163,188,.03)":"white"}}>
+                <tr key={o.id} style={{background:isExpanded?"rgba(136,221,225,.03)":"white"}}>
                   <td style={{...s.td,width:40,padding:"12px 8px 12px 16px"}}>
                     <button onClick={()=>setExpanded(isExpanded?null:o.id)}
                       style={{background:"none",border:"1px solid rgba(0,0,0,.1)",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,color:"#8888AA",transition:"transform .2s",transform:isExpanded?"rotate(90deg)":"rotate(0)"}}>
                       ▶
                     </button>
                   </td>
-                  <td style={s.td}><span style={{fontWeight:600,color:"#C4638A"}}>{o.orderNumber}</span></td>
+                  <td style={s.td}><span style={{fontWeight:600,color:"#1a9da3"}}>{o.orderNumber}</span></td>
                   <td style={s.td}>
                     <div style={{fontWeight:500,color:"#1A1A2E"}}>{o.retailer?.businessName}</div>
                     <div style={{fontSize:11,color:"#8888AA"}}>{o.retailer?.user?.email ?? ""}</div>
@@ -164,7 +164,7 @@ export default function AdminOrdersPage() {
                 {isExpanded && (
                   <tr key={o.id+"-exp"}>
                     <td colSpan={9} style={{padding:0,borderBottom:"1px solid rgba(0,0,0,.06)"}}>
-                      <div style={{background:"#FAFBFC",borderTop:"1px solid rgba(240,163,188,.15)",padding:"18px 24px"}}>
+                      <div style={{background:"#FAFBFC",borderTop:"1px solid rgba(136,221,225,.15)",padding:"18px 24px"}}>
                         {!orderDetail ? (
                           <p style={{color:"#8888AA",fontSize:13,margin:0}}>Loading order details…</p>
                         ) : (
@@ -245,7 +245,7 @@ export default function AdminOrdersPage() {
                                   <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#8888AA",marginBottom:5}}>
                                     <span>VAT (20%)</span><span>{formatCurrency(orderDetail.vatPence)}</span>
                                   </div>
-                                  <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"#C4638A",paddingTop:6,borderTop:"1px solid rgba(0,0,0,.06)"}}>
+                                  <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"#1a9da3",paddingTop:6,borderTop:"1px solid rgba(0,0,0,.06)"}}>
                                     <span>Total</span><span>{formatCurrency(orderDetail.totalPence)}</span>
                                   </div>
                                 </div>

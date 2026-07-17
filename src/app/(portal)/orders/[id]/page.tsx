@@ -49,7 +49,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       body{font-family:system-ui,sans-serif}
       .page{padding:24px;max-width:800px}
       .back-link{display:inline-flex;align-items:center;gap:6px;color:#8888AA;font-size:13px;text-decoration:none;margin-bottom:20px;transition:color .15s}
-      .back-link:hover{color:#F0A3BC}
+      .back-link:hover{color:#88dde1}
       .order-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
       .order-num{font-size:26px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
       .order-meta{font-size:13px;color:#8888AA;margin:0}
@@ -61,19 +61,19 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       .tl-step{display:flex;flex-direction:column;align-items:center;flex:1;position:relative}
       .tl-connector{position:absolute;top:12px;left:50%;width:100%;height:2px;z-index:0}
       .tl-dot{width:24px;height:24px;border-radius:50%;z-index:1;position:relative;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid}
-      .tl-dot.done{background:#F0A3BC;border-color:#F0A3BC;color:white}
-      .tl-dot.current{background:#F0A3BC;border-color:#F0A3BC;color:white;box-shadow:0 0 0 4px rgba(240,163,188,.25)}
+      .tl-dot.done{background:#88dde1;border-color:#88dde1;color:white}
+      .tl-dot.current{background:#88dde1;border-color:#88dde1;color:white;box-shadow:0 0 0 4px rgba(136,221,225,.25)}
       .tl-dot.pending{background:white;border-color:#E0E0E0;color:#CCCCCC}
       .tl-label{font-size:9px;text-align:center;margin-top:6px;line-height:1.3}
       .tl-label.done{color:#4A4A6A;font-weight:500}
-      .tl-label.current{color:#C4638A;font-weight:700}
+      .tl-label.current{color:#1a9da3;font-weight:700}
       .tl-label.pending{color:#BBBBCC}
       .tl-date{font-size:8px;color:#BBBBCC;text-align:center;margin-top:2px}
       .tracker{background:#E8F8F7;border:1px solid rgba(92,200,197,.3);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:12px}
       .tracker-label{font-size:11px;color:#8888AA;margin:0 0 2px}
       .tracker-num{font-family:monospace;font-size:14px;font-weight:600;color:#3A9E9B;margin:0}
-      .track-btn{padding:7px 14px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-      .track-btn:hover{background:#E88BAA}
+      .track-btn{padding:7px 14px;background:#88dde1;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+      .track-btn:hover{background:#5ecfd4}
       .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
       .detail-item{padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06)}
       .detail-item:nth-last-child(-n+2){border-bottom:none}
@@ -81,14 +81,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       .detail-val{font-size:13px;font-weight:600;color:#1A1A2E;margin:0}
       .line-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,.06)}
       .line-item:last-child{border-bottom:none}
-      .line-icon{width:40px;height:40px;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+      .line-icon{width:40px;height:40px;background:linear-gradient(135deg,#e6f9fa,#E8F8F7);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
       .line-name{font-size:13px;font-weight:600;color:#1A1A2E;margin:0 0 2px}
       .line-meta{font-size:11px;color:#8888AA;margin:0;font-family:monospace}
       .line-val{margin-left:auto;text-align:right;flex-shrink:0}
       .line-qty{font-size:12px;color:#8888AA;margin:0 0 2px}
       .line-total{font-size:14px;font-weight:700;color:#1A1A2E;margin:0}
       .totals-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;color:#8888AA}
-      .totals-final{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#C4638A;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);margin-top:4px}
+      .totals-final{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#1a9da3;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);margin-top:4px}
     `}</style>
     <div className="page">
       <Link href="/orders" className="back-link">← Back to orders</Link>
@@ -99,7 +99,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <OrderExportButton orderNumber={order.orderNumber} items={order.items.map(i=>({productName:i.productName,sku:i.sku,quantity:i.quantity,unitCostPence:i.unitCostPence,lineTotalPence:i.lineTotalPence,rrpPence:i.product?.rrpPence}))} />
-          <span className="status-badge" style={{background:order.status==="DELIVERED"?"#EAFAF3":order.status==="CANCELLED"?"#FFF1F4":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#E8F8F7":"#FDE8EF",color:order.status==="DELIVERED"?"#0EA572":order.status==="CANCELLED"?"#E11D48":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#3A9E9B":"#C4638A"}}>
+          <span className="status-badge" style={{background:order.status==="DELIVERED"?"#EAFAF3":order.status==="CANCELLED"?"#FFF1F4":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#E8F8F7":"#e6f9fa",color:order.status==="DELIVERED"?"#0EA572":order.status==="CANCELLED"?"#E11D48":order.status==="DISPATCHED"||order.status==="OUT_FOR_DELIVERY"?"#3A9E9B":"#1a9da3"}}>
           {order.status.replace(/_/g," ")}
           </span>
         </div>
@@ -117,7 +117,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 return (
                   <div key={status} className="tl-step">
                     {idx < ALL_STATUSES.length - 1 && (
-                      <div className="tl-connector" style={{background:done&&!current?"#F0A3BC":"#E0E0E0"}} />
+                      <div className="tl-connector" style={{background:done&&!current?"#88dde1":"#E0E0E0"}} />
                     )}
                     <div className={"tl-dot "+(current?"current":done?"done":"pending")}>
                       {done?"✓":""}

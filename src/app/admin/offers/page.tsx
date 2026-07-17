@@ -41,13 +41,13 @@ export default function AdminOffersPage() {
   const S: any = {
     wrap: {padding:24,fontFamily:"system-ui,sans-serif"},
     card: {background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:14,padding:18,marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.04)"},
-    chip: (a:boolean) => ({padding:"5px 14px",borderRadius:99,fontSize:12,fontWeight:500,background:a?"#F0A3BC":"#F4F5F7",color:a?"white":"#4A4A6A",border:"none",cursor:"pointer"}),
+    chip: (a:boolean) => ({padding:"5px 14px",borderRadius:99,fontSize:12,fontWeight:500,background:a?"#88dde1":"#F4F5F7",color:a?"white":"#4A4A6A",border:"none",cursor:"pointer"}),
     badge: (s:string) => ({display:"inline-flex",padding:"3px 10px",borderRadius:99,fontSize:11,fontWeight:600,background:STATUS[s]?.bg??"#F4F5F7",color:STATUS[s]?.color??"#8888AA"}),
     overlay: {position:"fixed" as const,inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(2px)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
     modal: {background:"white",borderRadius:16,padding:28,maxWidth:440,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,.15)"},
     inp: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",boxSizing:"border-box" as const,background:"white",marginTop:6},
     lbl: {fontSize:11,fontWeight:600,color:"#4A4A6A",textTransform:"uppercase" as const,letterSpacing:".05em"},
-    btnPink: {padding:"9px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    btnPink: {padding:"9px 18px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
     btnGhost: {padding:"9px 16px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
     btnGreen: {padding:"7px 14px",background:"#0EA572",color:"white",border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"},
     btnRed: {padding:"7px 12px",background:"white",color:"#E11D48",border:"1px solid rgba(225,29,72,.2)",borderRadius:8,fontSize:12,fontWeight:500,cursor:"pointer"},
@@ -104,7 +104,7 @@ export default function AdminOffersPage() {
                 <div style={{display:"flex",gap:10,flexWrap:"wrap" as const,marginBottom:10}}>
                   {[
                     ["Listed",fmt(offer.product?.unitCostPence),"#8888AA"],
-                    ["Their offer",fmt(offer.offeredPricePence),"#C4638A"],
+                    ["Their offer",fmt(offer.offeredPricePence),"#1a9da3"],
                     ["Discount",`-${savePct}%`,savePct>20?"#E11D48":"#D97706"],
                     ["Qty",`${offer.quantity} units`,"#1A1A2E"],
                     ["Offer value",fmt(offer.offeredPricePence*offer.quantity),"#1A1A2E"],

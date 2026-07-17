@@ -49,7 +49,7 @@ export default function CheckoutPage() {
   if (success) {
     return (
       <>
-      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.success-icon{font-size:64px;margin-bottom:16px}.success-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px}.success-sub{font-size:14px;color:#8888AA;margin:0 0 32px}.btn-pink{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;margin:0 6px}.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;margin:0 6px}`}</style>
+      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.success-icon{font-size:64px;margin-bottom:16px}.success-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px}.success-sub{font-size:14px;color:#8888AA;margin:0 0 32px}.btn-pink{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;margin:0 6px}.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;margin:0 6px}`}</style>
       <div className="checkout-page">
         <div className="success-icon">🎉</div>
         <h1 className="success-title">Order placed!</h1>
@@ -63,7 +63,7 @@ export default function CheckoutPage() {
   if (account && !account.hasAddress) {
     return (
       <>
-      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
+      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
       <div className="checkout-page">
         <div style={{fontSize:48,marginBottom:16}}>📋</div>
         <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Complete your profile first</h1>
@@ -77,7 +77,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <>
-      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
+      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
       <div className="checkout-page">
         <div style={{fontSize:48,marginBottom:16}}>🛒</div>
         <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Your basket is empty</h1>
@@ -101,10 +101,10 @@ export default function CheckoutPage() {
       .form-group{margin-bottom:18px}
       .form-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4A4A6A;margin-bottom:7px}
       .form-input{width:100%;padding:11px 14px;border:1.5px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white;transition:border-color .15s}
-      .form-input:focus{border-color:#F0A3BC;box-shadow:0 0 0 3px rgba(240,163,188,.15)}
+      .form-input:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.15)}
       .form-hint{font-size:11px;color:#8888AA;margin-top:5px}
-      .submit-btn{width:100%;padding:14px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
-      .submit-btn:hover{background:#E88BAA}
+      .submit-btn{width:100%;padding:14px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
+      .submit-btn:hover{background:#5ecfd4}
       .submit-btn:disabled{opacity:.6;cursor:not-allowed}
       .error-box{background:#FFF1F4;border:1px solid rgba(225,29,72,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#E11D48;margin-bottom:16px}
       .line-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06)}
@@ -113,7 +113,7 @@ export default function CheckoutPage() {
       .line-meta{font-size:11px;color:#8888AA;margin:0}
       .line-price{font-size:13px;font-weight:600;color:#1A1A2E;flex-shrink:0}
       .totals-row{display:flex;justify-content:space-between;font-size:13px;color:#8888AA;padding:5px 0}
-      .totals-final{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#C4638A;padding-top:10px;border-top:1.5px solid rgba(0,0,0,.08);margin-top:6px}
+      .totals-final{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#1a9da3;padding-top:10px;border-top:1.5px solid rgba(0,0,0,.08);margin-top:6px}
     `}</style>
     <div className="checkout-page">
       <h1 className="page-title">Checkout</h1>
@@ -139,7 +139,7 @@ export default function CheckoutPage() {
             <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
               {loading ? "Placing order…" : "Place Order · "+formatCurrency(total)}
             </button>
-            <p style={{fontSize:11,color:"#8888AA",textAlign:"center",marginTop:12}}>By placing this order you agree to our <a href="#" style={{color:"#F0A3BC"}}>terms of trade</a>.</p>
+            <p style={{fontSize:11,color:"#8888AA",textAlign:"center",marginTop:12}}>By placing this order you agree to our <a href="#" style={{color:"#88dde1"}}>terms of trade</a>.</p>
           </div>
         </div>
 

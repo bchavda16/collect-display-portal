@@ -85,7 +85,7 @@ export default function AdminProductsPage() {
     hdr: {display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20},
     title: {fontSize:22,fontWeight:700,color:"#1A1A2E",margin:0},
     sub: {fontSize:13,color:"#8888AA",margin:"4px 0 0"},
-    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    btnPink: {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 18px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
     btnGhost: {display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
     btnSm: {display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:6,fontSize:12,fontWeight:500,cursor:"pointer"},
     srch: {display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:10,marginBottom:16},
@@ -102,7 +102,7 @@ export default function AdminProductsPage() {
     lbl: {display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"},
     inp: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",boxSizing:"border-box",background:"white"},
     sel: {width:"100%",padding:"10px 12px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",background:"white"},
-    inpSm: {width:72,padding:"4px 8px",border:"1.5px solid #F0A3BC",borderRadius:6,fontSize:13,color:"#1A1A2E",outline:"none",textAlign:"center"},
+    inpSm: {width:72,padding:"4px 8px",border:"1.5px solid #88dde1",borderRadius:6,fontSize:13,color:"#1A1A2E",outline:"none",textAlign:"center"},
     bRow: {display:"flex",gap:10,marginTop:20},
   }
 
@@ -197,7 +197,7 @@ export default function AdminProductsPage() {
             <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:20}}>
               <div style={{width:170,height:99,border:"2px dashed rgba(0,0,0,.15)",borderRadius:10,background:imgPreview?"transparent":"#FAFBFC",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,position:"relative",cursor:"pointer"}} onClick={()=>imgRef.current?.click()}>
                 {imgPreview ? <img src={imgPreview} style={{width:"100%",height:"100%",objectFit:"cover"}} /> : <div style={{textAlign:"center"}}><div style={{fontSize:22}}>🖼️</div><div style={{fontSize:11,color:"#8888AA"}}>Click to upload</div></div>}
-                {uploadingImg && <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#F0A3BC",fontWeight:600}}>Uploading…</div>}
+                {uploadingImg && <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#88dde1",fontWeight:600}}>Uploading…</div>}
               </div>
               <div style={{flex:1}}>
                 <button style={{...S.btnGhost,marginBottom:8,width:"100%",justifyContent:"center"}} onClick={()=>imgRef.current?.click()} disabled={uploadingImg}>{imgPreview?"Change Image":"Upload Image"}</button>

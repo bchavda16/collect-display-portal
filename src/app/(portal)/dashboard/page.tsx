@@ -62,19 +62,19 @@ export default async function DashboardPage() {
       .tbl td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.06)}
       .tbl tr:last-child td{border-bottom:none}
       .annc-card{border-left:3px solid #5CC8C5;background:#E8F8F7;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px}
-      .annc-card.pink{border-color:#F0A3BC;background:#FDE8EF}
+      .annc-card.pink{border-color:#88dde1;background:#e6f9fa}
       .annc-card.amber{border-color:#D97706;background:#FEF3C7}
       .annc-title{font-size:12px;font-weight:600;color:#1A1A2E;margin:0 0 3px}
       .annc-body{font-size:11px;color:#4A4A6A;margin:0;line-height:1.5}
       .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
       .product-mini{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;overflow:hidden;transition:all .2s;text-decoration:none;display:block}
-      .product-mini:hover{box-shadow:0 4px 16px rgba(240,163,188,.2);border-color:rgba(240,163,188,.4);transform:translateY(-2px)}
-      .product-mini-img{height:175px;width:100%;background:linear-gradient(135deg,#FDE8EF,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;position:relative}
+      .product-mini:hover{box-shadow:0 4px 16px rgba(136,221,225,.2);border-color:rgba(136,221,225,.4);transform:translateY(-2px)}
+      .product-mini-img{height:175px;width:100%;background:linear-gradient(135deg,#e6f9fa,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;position:relative}
       .product-mini-body{padding:12px}
       .product-mini-brand{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#3A9E9B;margin:0 0 3px}
       .product-mini-name{font-size:12px;font-weight:600;color:#1A1A2E;margin:0 0 6px;line-height:1.3}
       .product-mini-price{display:flex;justify-content:space-between;font-size:12px}
-      .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#F0A3BC;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
+      .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#88dde1;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
       .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
       .mb20{margin-bottom:20px}.mb24{margin-bottom:24px}
     `}</style>
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
       <div className="mb24">
         <div className="section-head">
           <span>Latest Stock</span>
-          <Link href="/stock" style={{fontSize:12,color:"#F0A3BC",textDecoration:"none",fontWeight:500}}>View all →</Link>
+          <Link href="/stock" style={{fontSize:12,color:"#88dde1",textDecoration:"none",fontWeight:500}}>View all →</Link>
         </div>
         <div className="grid3">
           {latestProducts.map(p=>(
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
                 <p className="product-mini-brand">{p.brand?.name}</p>
                 <p className="product-mini-name">{p.name}</p>
                 <div className="product-mini-price">
-                  <span style={{color:"#C4638A",fontWeight:600}}>{formatCurrency(p.unitCostPence)}/unit</span>
+                  <span style={{color:"#1a9da3",fontWeight:600}}>{formatCurrency(p.unitCostPence)}/unit</span>
                   <span style={{color:p.stockUnits<=10?"#D97706":"#0EA572",fontWeight:600}}>{p.stockUnits} left</span>
                 </div>
               </div>
@@ -130,17 +130,17 @@ export default async function DashboardPage() {
         <div>
           <div className="section-head">
             <span>Recent Orders</span>
-            <Link href="/orders" style={{fontSize:12,color:"#F0A3BC",textDecoration:"none",fontWeight:500}}>View all →</Link>
+            <Link href="/orders" style={{fontSize:12,color:"#88dde1",textDecoration:"none",fontWeight:500}}>View all →</Link>
           </div>
           <div className="card" style={{overflow:"hidden"}}>
             <table className="tbl">
               <thead><tr><th>Order</th><th>Date</th><th>Lines</th><th>Value</th><th>Status</th></tr></thead>
               <tbody>
                 {!retailer?.orders.length?(
-                  <tr><td colSpan={5} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No orders yet — <Link href="/stock" style={{color:"#F0A3BC"}}>browse stock</Link></td></tr>
+                  <tr><td colSpan={5} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No orders yet — <Link href="/stock" style={{color:"#88dde1"}}>browse stock</Link></td></tr>
                 ):retailer.orders.map(o=>(
                   <tr key={o.id}>
-                    <td><Link href={"/orders/"+o.id} style={{color:"#C4638A",fontWeight:600,textDecoration:"none"}}>{o.orderNumber}</Link></td>
+                    <td><Link href={"/orders/"+o.id} style={{color:"#1a9da3",fontWeight:600,textDecoration:"none"}}>{o.orderNumber}</Link></td>
                     <td style={{color:"#8888AA"}}>{formatRelativeDate(o.createdAt)}</td>
                     <td style={{color:"#4A4A6A"}}>{o.items.length}</td>
                     <td style={{fontWeight:600}}>{formatCurrency(o.totalPence)}</td>

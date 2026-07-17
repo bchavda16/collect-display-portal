@@ -52,12 +52,12 @@ export function BasketDrawer() {
       .stepper{display:flex;align-items:center;border:1px solid rgba(0,0,0,.12);border-radius:6px;overflow:hidden}
       .stepper button{background:#F4F5F7;border:none;padding:4px 8px;font-size:14px;cursor:pointer;color:#4A4A6A}
       .stepper span{font-size:12px;font-weight:600;padding:0 6px;color:#1A1A2E;min-width:26px;text-align:center}
-      .checkout-btn{display:block;width:100%;padding:12px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-top:12px}
-      .checkout-btn:hover{background:#E88BAA}
+      .checkout-btn{display:block;width:100%;padding:12px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-top:12px}
+      .checkout-btn:hover{background:#5ecfd4}
       .close-btn{background:none;border:none;cursor:pointer;color:#8888AA;font-size:20px;padding:0}
       .clear-btn{background:none;border:none;cursor:pointer;color:#8888AA;font-size:12px;text-decoration:underline;padding:0}
       .summary-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
-      .summary-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#C4638A;border-top:1px solid rgba(0,0,0,.08);padding-top:10px;margin-top:6px}
+      .summary-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#1a9da3;border-top:1px solid rgba(0,0,0,.08);padding-top:10px;margin-top:6px}
     `}</style>
     <div className="backdrop" onClick={()=>setOpen(false)} />
     <div className="drawer">
@@ -85,7 +85,7 @@ export function BasketDrawer() {
             <div style={{flex:1,minWidth:0}}>
               <p style={{fontSize:12,fontWeight:600,color:"#1A1A2E",margin:"0 0 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</p>
               <p style={{fontSize:11,color:"#8888AA",fontFamily:"monospace",margin:"0 0 6px"}}>{item.sku}</p>
-              <p style={{fontSize:12,fontWeight:600,color:"#C4638A",margin:0}}>{formatCurrency(item.lineTotalPence)}</p>
+              <p style={{fontSize:12,fontWeight:600,color:"#1a9da3",margin:0}}>{formatCurrency(item.lineTotalPence)}</p>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
               <div className="stepper">

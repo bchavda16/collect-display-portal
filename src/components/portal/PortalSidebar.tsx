@@ -22,13 +22,13 @@ const s = {
   logoSub: { fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8888AA', marginTop: 2 },
   nav: { flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column' as const, gap: 2, overflowY: 'auto' as const },
   navItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#4A4A6A', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
-  navActive: { background: '#FDE8EF', color: '#C4638A', fontWeight: 600 },
-  basketBtn: { margin: '0 8px 8px', background: '#FDE8EF', border: '1px solid rgba(240,163,188,0.35)', borderRadius: 10, padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' },
-  basketLabel: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#C4638A' },
-  basketCount: { background: '#F0A3BC', color: 'white', fontSize: 10, fontWeight: 700, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  navActive: { background: '#e6f9fa', color: '#1a9da3', fontWeight: 600 },
+  basketBtn: { margin: '0 8px 8px', background: '#e6f9fa', border: '1px solid rgba(136,221,225,0.35)', borderRadius: 10, padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' },
+  basketLabel: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#1a9da3' },
+  basketCount: { background: '#88dde1', color: 'white', fontSize: 10, fontWeight: 700, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   footer: { padding: '10px', borderTop: '1px solid rgba(0,0,0,0.08)' },
   userRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' },
-  avatar: { width: 28, height: 28, borderRadius: '50%', background: '#FDE8EF', border: '1px solid rgba(240,163,188,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#C4638A', flexShrink: 0 },
+  avatar: { width: 28, height: 28, borderRadius: '50%', background: '#e6f9fa', border: '1px solid rgba(136,221,225,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#1a9da3', flexShrink: 0 },
   userName: { fontSize: 12, fontWeight: 500, color: '#1A1A2E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
   userRole: { fontSize: 10, color: '#8888AA' },
 }
@@ -47,9 +47,9 @@ export function PortalSidebar({ onBasketOpen }: { onBasketOpen?: () => void }) {
     <aside style={s.sidebar}>
       <div style={s.logoArea}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 3, height: 28, borderRadius: 99, background: '#F0A3BC' }} />
+          <div style={{ width: 3, height: 28, borderRadius: 99, background: '#88dde1' }} />
           <div>
-            <div style={s.logoText}>collect<span style={{ color: '#F0A3BC' }}>&</span>display</div>
+            <div style={s.logoText}>collect<span style={{ color: '#88dde1' }}>&</span>display</div>
             <div style={s.logoSub}>Distribution Portal</div>
           </div>
         </div>

@@ -40,7 +40,7 @@ export default function TrackingPage() {
       .badge-grey{background:#F4F5F7;color:#8888AA;display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
       .tracker-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
       .tracking-num{background:#E8F8F7;border:1px solid rgba(92,200,197,.3);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-top:12px}
-      .track-btn{padding:6px 12px;background:#F0A3BC;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+      .track-btn{padding:6px 12px;background:#88dde1;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
       .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 16px;text-align:center}
       .section-head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 10px}
     `}</style>

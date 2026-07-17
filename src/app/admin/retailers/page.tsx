@@ -45,7 +45,7 @@ export default function AdminRetailersPage() {
     title: {fontSize:22,fontWeight:700,color:"#1A1A2E",margin:"0 0 4px"},
     sub: {fontSize:13,color:"#8888AA",margin:"0 0 20px"},
     rowBetween: {display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:16},
-    btnPink: {display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",background:"#F0A3BC",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
+    btnPink: {display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",background:"#88dde1",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"},
     btnGhost: {display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer"},
     btnGhostSm: {display:"inline-flex",alignItems:"center",gap:6,padding:"5px 10px",background:"white",color:"#4A4A6A",border:"1px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:12,fontWeight:500,cursor:"pointer"},
     searchBox: {display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:10,marginBottom:16},

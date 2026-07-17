@@ -98,7 +98,7 @@ export function ProfileBanner() {
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={() => setShowForm(false)} style={{ flex:1, padding:"10px 0", background:"white", color:"#4A4A6A", border:"1px solid rgba(0,0,0,.12)", borderRadius:8, fontSize:13, fontWeight:500, cursor:"pointer" }}>Later</button>
             <button onClick={handleSave} disabled={saving}
-              style={{ flex:2, padding:"10px 0", background:"#F0A3BC", color:"white", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", opacity:saving?.6:1 }}>
+              style={{ flex:2, padding:"10px 0", background:"#88dde1", color:"white", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", opacity:saving?.6:1 }}>
               {saving ? "Saving…" : "Save & Continue"}
             </button>
           </div>
