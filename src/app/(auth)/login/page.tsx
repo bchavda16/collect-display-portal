@@ -39,21 +39,21 @@ function LoginForm() {
   }
 
   const css = `
-    .lp{min-height:100vh;background:white;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;position:relative;overflow:hidden}
+    .lp{min-height:100vh;background:url("https://static.wixstatic.com/media/e2bfa5_32827018d0c54f16820ef6b8dd3d4ca4~mv2.png/v1/fill/w_2646,h_1077,al_c,q_95,enc_avif,quality_auto/e2bfa5_32827018d0c54f16820ef6b8dd3d4ca4~mv2.png") center center/cover no-repeat;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;position:relative;overflow:hidden}
     .b1{position:absolute;top:-10%;right:-5%;width:400px;height:400px;border-radius:50%;background:rgba(136,221,225,.15);filter:blur(60px);pointer-events:none}
-    .b2{position:absolute;bottom:-10%;left:-5%;width:350px;height:350px;border-radius:50%;background:rgba(92,200,197,.12);filter:blur(60px);pointer-events:none}
+    
     .lbox{width:100%;max-width:400px;position:relative;z-index:1}
     .logo{text-align:center;margin-bottom:28px}
-    .logo-t{font-size:26px;font-weight:800;color:#1A1A2E;letter-spacing:-.5px}
+    .logo-t{font-size:26px;font-weight:800;color:white;letter-spacing:-.5px;text-shadow:0 2px 12px rgba(0,0,0,.3)}
     .logo-t span{color:#88dde1}
-    .logo-s{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8888AA;margin-top:4px}
-    .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:16px;padding:28px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
-    .tabs{display:flex;border-bottom:2px solid rgba(0,0,0,.08);margin-bottom:20px}
-    .tab{flex:1;padding:10px 0;text-align:center;font-size:13px;font-weight:500;color:#8888AA;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+    .logo-s{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-top:4px}
+    .card{background:rgba(255,255,255,.12);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+    .tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:20px}
+    .tab{flex:1;padding:10px 0;text-align:center;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
     .tab.on{color:#88dde1;border-bottom-color:#88dde1;font-weight:600}
     .fg{margin-bottom:16px}
-    .fl{display:block;font-size:11px;font-weight:600;color:#4A4A6A;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
-    .fi{width:100%;padding:11px 14px;border:1.5px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;color:#1A1A2E;outline:none;box-sizing:border-box;transition:border-color .15s}
+    .fl{display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+    .fi{width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.2);border-radius:10px;font-size:14px;color:white;outline:none;box-sizing:border-box;transition:all .15s;background:rgba(255,255,255,.1);backdrop-filter:blur(4px)}
     .fi:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.15)}
     .pw{position:relative}
     .pt{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8888AA;font-size:16px;padding:0}
@@ -62,16 +62,15 @@ function LoginForm() {
     .sb{width:100%;padding:12px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
     .sb:hover{background:#5ecfd4}
     .sb:disabled{opacity:.6;cursor:not-allowed}
-    .req{color:#E11D48;margin-left:2px}
-    .foot{text-align:center;font-size:12px;color:#8888AA;margin-top:16px}
+    .req{color:#88dde1;margin-left:2px}
+    .foot{text-align:center;font-size:12px;color:rgba(255,255,255,.5);margin-top:16px}
   `
 
   return (
     <div>
       <style dangerouslySetInnerHTML={{__html: css}} />
       <div className="lp">
-        <div className="b1" />
-        <div className="b2" />
+        <div className="overlay" />
         <div className="lbox">
           <div className="logo">
             <div className="logo-t">collect<span>&amp;</span>display</div>
