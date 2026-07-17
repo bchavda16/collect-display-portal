@@ -14,6 +14,11 @@ export default function CheckoutPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState<string|null>(null)
 
+  const { data: account } = useQuery({
+    queryKey: ["account"],
+    queryFn: async () => { const r = await fetch("/api/account"); return r.json() },
+  })
+
   const { data: basket } = useQuery({
     queryKey: ["basket"],
     queryFn: async () => { const r = await fetch("/api/basket"); return r.json() },
@@ -50,6 +55,20 @@ export default function CheckoutPage() {
         <h1 className="success-title">Order placed!</h1>
         <p className="success-sub">{success} has been submitted successfully. You will receive a confirmation email shortly.</p>
         <div><Link href="/orders" className="btn-pink">View my orders</Link><Link href="/stock" className="btn-ghost">Continue shopping</Link></div>
+      </div>
+      </>
+    )
+  }
+
+  if (account && !account.hasAddress) {
+    return (
+      <>
+      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#F0A3BC;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
+      <div className="checkout-page">
+        <div style={{fontSize:48,marginBottom:16}}>📋</div>
+        <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Complete your profile first</h1>
+        <p style={{fontSize:13,color:"#8888AA",marginBottom:24}}>We need your delivery address before you can place an order.</p>
+        <a href="/account" className="btn-pink">Go to Account Settings →</a>
       </div>
       </>
     )

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { PortalSidebar } from "@/components/portal/PortalSidebar"
 import { BasketDrawer } from "@/components/portal/BasketDrawer"
+import { ProfileBanner } from "@/components/portal/ProfileBanner"
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -11,7 +12,7 @@ export default async function PortalLayout({ children }: { children: React.React
   return (
     <div className="portal-layout">
       <PortalSidebar />
-      <main className="portal-main">{children}</main>
+      <main className="portal-main"><ProfileBanner />{children}</main>
       <BasketDrawer />
     </div>
   )
