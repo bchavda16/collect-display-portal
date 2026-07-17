@@ -348,3 +348,20 @@ model ProductOffer {
   @@index([productId])
   @@index([status])
 }
+
+enum ApplicationStatus { PENDING APPROVED DECLINED }
+
+model RetailerApplication {
+  id          String            @id @default(cuid())
+  businessName String
+  contactName  String
+  email        String
+  phone        String?
+  status       ApplicationStatus @default(PENDING)
+  adminNote    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([status])
+  @@index([email])
+}
