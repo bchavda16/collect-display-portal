@@ -54,11 +54,11 @@ function LoginForm() {
     .fg{margin-bottom:16px}
     .fl{display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
     .fi{width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.2);border-radius:10px;font-size:14px;color:white;outline:none;box-sizing:border-box;transition:all .15s;background:rgba(255,255,255,.1);backdrop-filter:blur(4px)}
-    .fi:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.15)}
+    .fi:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.2);background:rgba(255,255,255,.12)}.fi::placeholder{color:rgba(255,255,255,.25)}
     .pw{position:relative}
     .pt{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8888AA;font-size:16px;padding:0}
-    .err{background:#FFF1F4;border:1px solid rgba(225,29,72,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#E11D48;margin-bottom:16px}
-    .ok{background:#EAFAF3;border:1px solid rgba(14,165,114,.2);border-radius:12px;padding:20px;font-size:13px;color:#0EA572;margin-bottom:16px;text-align:center}
+    .err{background:rgba(225,29,72,.15);border:1px solid rgba(225,29,72,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#ff8097;margin-bottom:16px}
+    .ok{background:rgba(14,165,114,.12);border:1px solid rgba(14,165,114,.25);border-radius:12px;padding:20px;font-size:13px;color:#4ade80;margin-bottom:16px;text-align:center}
     .sb{width:100%;padding:12px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
     .sb:hover{background:#5ecfd4}
     .sb:disabled{opacity:.6;cursor:not-allowed}
