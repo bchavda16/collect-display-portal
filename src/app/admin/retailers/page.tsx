@@ -215,7 +215,7 @@ export default function AdminRetailersPage() {
               <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
               <div style={{fontSize:17,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Delete {deleteConfirm.businessName}?</div>
               <div style={{fontSize:13,color:"#8888AA",marginBottom:24,lineHeight:1.6}}>This will permanently delete the retailer account, all their addresses and basket items. Their order history will be preserved. This cannot be undone.</div>
-              <div style={{display:"flex",gap:10"}}>
+              <div style={{display:"flex",gap:10}}>
                 <button style={{...S.btnGhost,flex:1}} onClick={()=>setDeleteConfirm(null)}>Cancel</button>
                 <button style={{flex:1,padding:"9px 18px",background:"#E11D48",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}} onClick={()=>deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
                   {deleteMutation.isPending?"Deleting…":"Yes, Delete Account"}
