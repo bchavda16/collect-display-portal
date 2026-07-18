@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { sendWelcomeEmail } from "@/lib/email"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -27,6 +28,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         where: { id: params.id }, data: { status: "APPROVED", adminNote: adminNote || null }
       })
     })
+    // Send welcome email
+    sendWelcomeEmail({
+      to: application.email,
+      businessName: application.businessName,
+      contactName: application.contactName,
+      tempPassword,
+      loginUrl: process.env.NEXTAUTH_URL ?? "https://collectanddisplay.netlify.app/login",
+    }).catch(console.error)
+
     return NextResponse.json({ success: true, action: "approved", tempPassword })
   }
 
