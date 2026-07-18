@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
   if (!businessName || !contactName || !email) {
     return NextResponse.json({ error: "Please fill in all required fields" }, { status: 400 })
   }
-  const existing = await prisma.retailerApplication.findFirst({ where: { email: email.toLowerCase() } })
-  if (existing) return NextResponse.json({ error: "An application with this email already exists" }, { status: 409 })
+  const existing = await prisma.retailerApplication.findFirst({ where: { email: email.toLowerCase(), status: "PENDING" } })
+  if (existing) return NextResponse.json({ error: "An application with this email is already pending review" }, { status: 409 })
   const userExists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
   if (userExists) return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
   await prisma.retailerApplication.create({
