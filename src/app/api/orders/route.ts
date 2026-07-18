@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
         to: user.email,
         retailerName: retailer.businessName,
         orderNumber: order.orderNumber,
-        items: order.items.map((i) => ({ name: i.productName, sku: i.sku, quantity: i.quantity, unitCostPence: i.unitCostPence, lineTotalPence: i.lineTotalPence })),
+        items: order.items.map((i) => ({ productName: i.productName, sku: i.sku, quantity: i.quantity, unitCostPence: i.unitCostPence, lineTotalPence: i.lineTotalPence })),
         subtotalPence, vatPence, totalPence, poReference,
       }).catch(console.error)
 
@@ -139,6 +139,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { orderNumber: order.orderNumber } }, { status: 201 })
   } catch (error) {
     console.error("[POST /api/orders]", error)
-    return NextResponse.json({ error: "Failed to place order" }, { status: 500 })
+    console.error("[POST /api/orders] Full error:", error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
