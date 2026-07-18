@@ -64,9 +64,10 @@ export async function sendOrderConfirmation(data: {
   orderNumber: string;
   poReference: string;
   items: { productName: string; sku: string; quantity: number; unitCostPence: number; lineTotalPence: number }[];
-  subtotal: number;
-  vatAmount: number;
-  grandTotal: number;
+  subtotalPence: number;
+  vatPence: number;
+  totalPence: number;
+  poReference?: string | null;
 }) {
   const itemRows = data.items
     .map(
@@ -88,9 +89,9 @@ export async function sendOrderConfirmation(data: {
     </div>
     <div class="info-box">
       ${itemRows}
-      <div class="info-row"><span class="label">Subtotal (ex-VAT)</span><span class="value">£${data.subtotal.toFixed(2)}</span></div>
-      <div class="info-row"><span class="label">VAT (20%)</span><span class="value">£${data.vatAmount.toFixed(2)}</span></div>
-      <div class="info-row"><span class="label" style="font-weight:700">Total</span><span class="value" style="color:#E8334A;font-size:16px">£${data.grandTotal.toFixed(2)}</span></div>
+      <div class="info-row"><span class="label">Subtotal (ex-VAT)</span><span class="value">£${data.subtotalPence.toFixed(2)}</span></div>
+      <div class="info-row"><span class="label">VAT (20%)</span><span class="value">£${data.vatPence.toFixed(2)}</span></div>
+      <div class="info-row"><span class="label" style="font-weight:700">Total</span><span class="value" style="color:#E8334A;font-size:16px">£${data.totalPence.toFixed(2)}</span></div>
     </div>
     <a href="${APP_URL}/orders" class="btn">View Your Order →</a>
     <p style="margin-top:20px;font-size:13px;color:#94a3b8">We'll send you another email when your order is dispatched.</p>
@@ -156,7 +157,7 @@ export async function sendInvoiceNotification(data: {
     <h1>Invoice Ready</h1>
     <p>Hi ${data.retailerName}, your invoice for order <strong>${data.orderNumber}</strong> is now available.</p>
     <div class="info-box">
-      <div class="info-row"><span class="label">Amount Due</span><span class="value" style="color:#E8334A;font-size:16px">£${data.grandTotal.toFixed(2)}</span></div>
+      <div class="info-row"><span class="label">Amount Due</span><span class="value" style="color:#E8334A;font-size:16px">£${data.totalPence.toFixed(2)}</span></div>
     </div>
     <a href="${data.invoiceUrl}" class="btn">Download Invoice →</a>
     <a href="${APP_URL}/orders" style="display:inline-block;margin-left:12px;color:#E8334A;text-decoration:none;font-size:14px">View in Portal →</a>
@@ -236,7 +237,7 @@ export async function sendAdminNewOrderAlert(data: {
       <div class="info-row"><span class="label">Order</span><span class="value">${data.orderNumber}</span></div>
       <div class="info-row"><span class="label">Retailer</span><span class="value">${data.retailerName}</span></div>
       <div class="info-row"><span class="label">Items</span><span class="value">${data.itemCount} lines</span></div>
-      <div class="info-row"><span class="label">Total</span><span class="value" style="color:#E8334A">£${data.grandTotal.toFixed(2)}</span></div>
+      <div class="info-row"><span class="label">Total</span><span class="value" style="color:#E8334A">£${data.totalPence.toFixed(2)}</span></div>
     </div>
     <a href="${APP_URL}/admin/orders" class="btn">View in Admin →</a>
   `,
