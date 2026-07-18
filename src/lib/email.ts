@@ -63,7 +63,7 @@ export async function sendOrderConfirmation(data: {
   retailerName: string;
   orderNumber: string;
   poReference: string;
-  items: { name: string; quantity: number; lineTotal: number }[];
+  items: { productName: string; sku: string; quantity: number; unitCostPence: number; lineTotalPence: number }[];
   subtotal: number;
   vatAmount: number;
   grandTotal: number;
