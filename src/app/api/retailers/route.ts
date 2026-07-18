@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          user: { select: { id: true, email: true, createdAt: true } },
+          user: { select: { id: true, email: true, isActive: true, createdAt: true } },
           addresses: true,
           _count: { select: { orders: true } },
         },
