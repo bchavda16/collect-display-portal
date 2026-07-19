@@ -123,10 +123,10 @@ export async function POST(req: NextRequest) {
       return newOrder
     })
 
-    const user = await prisma.user.findUnique({ where: { id: (session.user as any).id } })
-    if (user) {
+    const retailerUser = await prisma.user.findUnique({ where: { id: retailer.userId } })
+    if (retailerUser) {
       sendOrderConfirmation({
-        to: user.email,
+        to: retailerUser.email,
         retailerName: retailer.businessName,
         orderNumber: order.orderNumber,
         items: order.items.map((i) => ({ productName: i.productName, sku: i.sku, quantity: i.quantity, unitCostPence: i.unitCostPence, lineTotalPence: i.lineTotalPence })),
