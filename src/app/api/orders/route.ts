@@ -124,7 +124,9 @@ export async function POST(req: NextRequest) {
     })
 
     const retailerUser = await prisma.user.findUnique({ where: { id: retailer.userId } })
+    console.log('[EMAIL DEBUG] retailerUser:', retailerUser?.email, 'userId:', retailer.userId)
     if (retailerUser) {
+      console.log('[EMAIL DEBUG] sending order confirmation to:', retailerUser.email)
       sendOrderConfirmation({
         to: retailerUser.email,
         retailerName: retailer.businessName,
