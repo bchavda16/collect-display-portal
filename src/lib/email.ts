@@ -73,7 +73,7 @@ export async function sendOrderConfirmation(data: {
     .map(
       (i) => `
     <div class="info-row">
-      <span class="label">${i.name} × ${i.quantity} CDU</span>
+      <span class="label">${i.productName} × ${i.quantity} CDU</span>
       <span class="value">£${i.lineTotal.toFixed(2)}</span>
     </div>`
     )
