@@ -99,6 +99,7 @@ export async function sendOrderConfirmation(data: {
     `Order ${data.orderNumber} Confirmed`
   );
 
+  console.log('[RESEND] Attempting to send to:', data.to)
   return resend.emails.send({
     from: FROM,
     to: data.to,
@@ -137,6 +138,7 @@ export async function sendStatusUpdate(data: {
     `Order ${data.orderNumber} Update`
   );
 
+  console.log('[RESEND] Attempting to send to:', data.to)
   return resend.emails.send({
     from: FROM,
     to: data.to,
@@ -165,6 +167,7 @@ export async function sendInvoiceNotification(data: {
     `Invoice for ${data.orderNumber}`
   );
 
+  console.log('[RESEND] Attempting to send to:', data.to)
   return resend.emails.send({
     from: FROM,
     to: data.to,
@@ -189,6 +192,7 @@ export async function sendPasswordReset(data: {
     "Reset your password"
   );
 
+  console.log('[RESEND] Attempting to send to:', data.to)
   return resend.emails.send({
     from: FROM,
     to: data.to,
@@ -216,6 +220,7 @@ export async function sendWelcomeEmail(data: {
     "Welcome to collect&display"
   );
 
+  console.log('[RESEND] Attempting to send to:', data.to)
   return resend.emails.send({
     from: FROM,
     to: data.to,
@@ -244,6 +249,7 @@ export async function sendAdminNewOrderAlert(data: {
     `New Order ${data.orderNumber}`
   );
 
+  console.log('[RESEND] Attempting to send to:', data.to)
   return resend.emails.send({
     from: FROM,
     to: ADMIN_EMAIL,
