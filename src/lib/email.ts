@@ -74,7 +74,7 @@ export async function sendOrderConfirmation(data: {
       (i) => `
     <div class="info-row">
       <span class="label">${i.productName} × ${i.quantity} CDU</span>
-      <span class="value">£${i.lineTotal.toFixed(2)}</span>
+      <span class="value">£${i.lineTotalPence/100).toFixed(2)}</span>
     </div>`
     )
     .join("");
@@ -89,7 +89,7 @@ export async function sendOrderConfirmation(data: {
     </div>
     <div class="info-box">
       ${itemRows}
-      <div class="info-row"><span class="label">Subtotal (ex-VAT)</span><span class="value">£${data.subtotalPence.toFixed(2)}</span></div>
+      <div class="info-row"><span class="label">Subtotal (ex-VAT)</span><span class="value">£${(data.subtotalPence/100).toFixed(2)}</span></div>
       <div class="info-row"><span class="label">VAT (20%)</span><span class="value">£${data.vatPence.toFixed(2)}</span></div>
       <div class="info-row"><span class="label" style="font-weight:700">Total</span><span class="value" style="color:#E8334A;font-size:16px">£${data.totalPence.toFixed(2)}</span></div>
     </div>
