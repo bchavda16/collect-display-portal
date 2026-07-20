@@ -1,8 +1,29 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
-import { formatCurrency, formatRelativeDate } from "@/lib/utils"
 import Link from "next/link"
+
+const fmt = (p: number) => new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(p/100)
+
+function timeAgo(date: Date) {
+  const diff = Date.now() - new Date(date).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return "Today"
+  if (days === 1) return "Yesterday"
+  return `${days} days ago`
+}
+
+const STATUS_COLORS: Record<string,{bg:string;color:string}> = {
+  PLACED:{bg:"#E8F8F7",color:"#3A9E9B"},
+  CONFIRMED:{bg:"#E8F8F7",color:"#3A9E9B"},
+  PROCESSING:{bg:"#F3EEFF",color:"#7C3AED"},
+  PICKED:{bg:"#F3EEFF",color:"#7C3AED"},
+  PACKED:{bg:"#FEF3C7",color:"#D97706"},
+  DISPATCHED:{bg:"#EAFAF3",color:"#0EA572"},
+  OUT_FOR_DELIVERY:{bg:"#EAFAF3",color:"#0EA572"},
+  DELIVERED:{bg:"#F4F5F7",color:"#8888AA"},
+  CANCELLED:{bg:"#FFF1F4",color:"#E11D48"},
+}
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -13,148 +34,102 @@ export default async function DashboardPage() {
     include: { orders: { orderBy: { createdAt: "desc" }, take: 5, include: { items: true } } },
   })
 
-  const [announcements, latestProducts] = await Promise.all([
-    Promise.resolve([]),
-    prisma.product.findMany({
-      where: { status: { in: ["ACTIVE", "LOW_STOCK"] } },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-      include: { brand: true, images: { take: 1 } },
-    }),
-  ])
-
   const spendToDate = await prisma.order.aggregate({
     _sum: { totalPence: true },
     where: { retailerId: retailer?.id ?? "", status: { not: "CANCELLED" } },
   })
   const totalSpend = spendToDate._sum.totalPence ?? 0
-
   const activeOrders = retailer?.orders.filter(o => !["DELIVERED","CANCELLED"].includes(o.status)) ?? []
-  const totalUnits = activeOrders.reduce((s, o) => s + o.items.reduce((ss, i) => ss + i.quantity, 0), 0)
   const lastOrder = retailer?.orders[0]
-
-  const statusColors: Record<string,{bg:string;color:string}> = {
-    PLACED:{bg:"#E8F8F7",color:"#3A9E9B"}, CONFIRMED:{bg:"#E8F8F7",color:"#3A9E9B"},
-    PROCESSING:{bg:"#F3EEFF",color:"#7C3AED"}, PICKED:{bg:"#F3EEFF",color:"#7C3AED"},
-    PACKED:{bg:"#FEF3C7",color:"#D97706"}, DISPATCHED:{bg:"#EAFAF3",color:"#0EA572"},
-    OUT_FOR_DELIVERY:{bg:"#EAFAF3",color:"#0EA572"}, DELIVERED:{bg:"#F4F5F7",color:"#8888AA"},
-    CANCELLED:{bg:"#FFF1F4",color:"#E11D48"},
-  }
 
   return (
     <>
     <style>{`
-      .p-page{padding:24px;font-family:system-ui,sans-serif}
-      .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-      .page-sub{font-size:13px;color:#8888AA;margin:0 0 24px}
-      .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-      .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-      .grid-3-1{display:grid;grid-template-columns:3fr 1fr;gap:20px}
-      .stat-card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-      .stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 8px}
-      .stat-val{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 4px}
-      .stat-sub{font-size:12px;margin:0;color:#8888AA}
-      .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-      .card-pad{padding:16px}
-      .section-head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8888AA;margin:0 0 12px;display:flex;align-items:center;justify-content:space-between}
-      .tbl{width:100%;border-collapse:collapse}
-      .tbl th{background:#F4F5F7;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8888AA;padding:9px 14px;text-align:left;border-bottom:1px solid rgba(0,0,0,.08)}
-      .tbl td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.06)}
-      .tbl tr:last-child td{border-bottom:none}
-      .annc-card{border-left:3px solid #5CC8C5;background:#E8F8F7;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px}
-      .annc-card.pink{border-color:#88dde1;background:#e6f9fa}
-      .annc-card.amber{border-color:#D97706;background:#FEF3C7}
-      .annc-title{font-size:12px;font-weight:600;color:#1A1A2E;margin:0 0 3px}
-      .annc-body{font-size:11px;color:#4A4A6A;margin:0;line-height:1.5}
-      .badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
-      .product-mini{background:white;border:1px solid rgba(0,0,0,.09);border-radius:12px;overflow:hidden;transition:all .2s;text-decoration:none;display:block}
-      .product-mini:hover{box-shadow:0 4px 16px rgba(136,221,225,.2);border-color:rgba(136,221,225,.4);transform:translateY(-2px)}
-      .product-mini-img{height:175px;width:100%;background:linear-gradient(135deg,#e6f9fa,#E8F8F7);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;position:relative}
-      .product-mini-body{padding:12px}
-      .product-mini-brand{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#3A9E9B;margin:0 0 3px}
-      .product-mini-name{font-size:12px;font-weight:600;color:#1A1A2E;margin:0 0 6px;line-height:1.3}
-      .product-mini-price{display:flex;justify-content:space-between;font-size:12px}
-      .btn-pink{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#88dde1;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
-      .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
-      .mb20{margin-bottom:20px}.mb24{margin-bottom:24px}
+      .dash{padding:20px;font-family:system-ui,sans-serif;max-width:900px}
+      .dash-title{font-size:22px;font-weight:800;color:#0d1117;margin:0 0 4px;letter-spacing:-.5px}
+      .dash-sub{font-size:13px;color:#8888AA;margin:0 0 20px}
+      .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+      .stat{background:white;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:16px}
+      .stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8888AA;margin:0 0 8px}
+      .stat-val{font-size:22px;font-weight:800;color:#0d1117;letter-spacing:-.5px;margin:0 0 3px}
+      .stat-sub{font-size:11px;color:#AAAAAA;margin:0}
+      .section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+      .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8888AA}
+      .view-all{font-size:12px;color:#88dde1;text-decoration:none;font-weight:500}
+      .orders-list{background:white;border:1px solid rgba(0,0,0,.08);border-radius:14px;overflow:hidden}
+      .order-row{padding:14px 16px;border-bottom:1px solid rgba(0,0,0,.06);display:flex;flex-direction:column;gap:8px}
+      .order-row:last-child{border-bottom:none}
+      .order-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+      .order-num{font-size:14px;font-weight:700;color:#1a9da3;text-decoration:none}
+      .order-status{display:inline-flex;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;flex-shrink:0}
+      .order-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
+      .order-meta{font-size:12px;color:#AAAAAA}
+      .order-value{font-size:13px;font-weight:700;color:#0d1117}
+      .quick-btns{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}
+      .btn-cyan{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#88dde1;color:#0a1420;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none}
+      .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
+      @media(max-width:768px){
+        .stats{grid-template-columns:1fr 1fr}
+        .stat-val{font-size:18px}
+        .dash{padding:16px}
+      }
     `}</style>
-    <div className="p-page">
-      <div className="mb24">
-        <h1 className="page-title">Welcome back</h1>
-        <p className="page-sub">{retailer?.businessName ?? "Your account"}</p>
-      </div>
+    <div className="dash">
+      <h1 className="dash-title">Welcome back</h1>
+      <p className="dash-sub">{retailer?.businessName ?? "Your account"}</p>
 
-      <div className="grid4">
-        {[
-          {label:"Active Orders",val:String(activeOrders.length),sub:"in progress"},
-          {label:"Units on Order",val:String(totalUnits),sub:"across active orders"},
-          {label:"Last Order",val:lastOrder?formatRelativeDate(lastOrder.createdAt):"—",sub:lastOrder?.orderNumber??"No orders yet"},
-          {label:"Spend to Date",val:"£"+(totalSpend/100).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2}),sub:"inc. VAT, all orders"},
-        ].map(c=>(
-          <div key={c.label} className="stat-card">
-            <p className="stat-label">{c.label}</p>
-            <p className="stat-val">{c.val}</p>
-            <p className="stat-sub">{c.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Latest stock */}
-      <div className="mb24">
-        <div className="section-head">
-          <span>Latest Stock</span>
-          <Link href="/stock" style={{fontSize:12,color:"#88dde1",textDecoration:"none",fontWeight:500}}>View all →</Link>
+      <div className="stats">
+        <div className="stat">
+          <p className="stat-lbl">Active Orders</p>
+          <p className="stat-val">{activeOrders.length}</p>
+          <p className="stat-sub">in progress</p>
         </div>
-        <div className="grid3">
-          {latestProducts.map(p=>(
-            <Link key={p.id} href="/stock" className="product-mini">
-              <div className="product-mini-img">
-                {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",inset:0}} />
-                  : <span>🎁</span>}
-              </div>
-              <div className="product-mini-body">
-                <p className="product-mini-brand">{p.brand?.name}</p>
-                <p className="product-mini-name">{p.name}</p>
-                <div className="product-mini-price">
-                  <span style={{color:"#1a9da3",fontWeight:600}}>{formatCurrency(p.unitCostPence)}/unit</span>
-                  <span style={{color:p.stockUnits<=10?"#D97706":"#0EA572",fontWeight:600}}>{p.stockUnits} left</span>
+        <div className="stat">
+          <p className="stat-lbl">Last Order</p>
+          <p className="stat-val" style={{fontSize:15}}>{lastOrder ? timeAgo(lastOrder.createdAt) : "—"}</p>
+          <p className="stat-sub">{lastOrder?.orderNumber ?? "No orders yet"}</p>
+        </div>
+        <div className="stat">
+          <p className="stat-lbl">Spend to Date</p>
+          <p className="stat-val" style={{fontSize:16}}>{fmt(totalSpend)}</p>
+          <p className="stat-sub">inc. VAT</p>
+        </div>
+      </div>
+
+      <div className="section-hdr">
+        <span className="section-title">Recent Orders</span>
+        <Link href="/orders" className="view-all">View all →</Link>
+      </div>
+
+      {!retailer?.orders.length ? (
+        <div className="orders-list">
+          <div style={{padding:"32px 16px",textAlign:"center",color:"#AAAAAA",fontSize:13}}>
+            No orders yet — <Link href="/stock" style={{color:"#88dde1"}}>browse stock</Link>
+          </div>
+        </div>
+      ) : (
+        <div className="orders-list">
+          {retailer.orders.map(o => {
+            const sc = STATUS_COLORS[o.status] ?? {bg:"#F4F5F7",color:"#8888AA"}
+            return (
+              <div key={o.id} className="order-row">
+                <div className="order-top">
+                  <Link href={`/orders/${o.id}`} className="order-num">{o.orderNumber}</Link>
+                  <span className="order-status" style={{background:sc.bg,color:sc.color}}>{o.status.replace(/_/g," ")}</span>
+                </div>
+                <div className="order-bottom">
+                  <span className="order-meta">{timeAgo(o.createdAt)} · {o.items.length} line{o.items.length!==1?"s":""}</span>
+                  <span className="order-value">{fmt(o.totalPence ?? 0)}</span>
                 </div>
               </div>
-            </Link>
-          ))}
+            )
+          })}
         </div>
-      </div>
+      )}
 
-      <div>
-        <div>
-          <div className="section-head">
-            <span>Recent Orders</span>
-            <Link href="/orders" style={{fontSize:12,color:"#88dde1",textDecoration:"none",fontWeight:500}}>View all →</Link>
-          </div>
-          <div className="card" style={{overflow:"hidden"}}>
-            <table className="tbl">
-              <thead><tr><th>Order</th><th>Date</th><th>Lines</th><th>Value</th><th>Status</th></tr></thead>
-              <tbody>
-                {!retailer?.orders.length?(
-                  <tr><td colSpan={5} style={{textAlign:"center",color:"#8888AA",padding:"32px"}}>No orders yet — <Link href="/stock" style={{color:"#88dde1"}}>browse stock</Link></td></tr>
-                ):retailer.orders.map(o=>(
-                  <tr key={o.id}>
-                    <td><Link href={"/orders/"+o.id} style={{color:"#1a9da3",fontWeight:600,textDecoration:"none"}}>{o.orderNumber}</Link></td>
-                    <td style={{color:"#8888AA"}}>{formatRelativeDate(o.createdAt)}</td>
-                    <td style={{color:"#4A4A6A"}}>{o.items.length}</td>
-                    <td style={{fontWeight:600}}>{formatCurrency(o.totalPence)}</td>
-                    <td><span className="badge" style={{background:statusColors[o.status]?.bg??"#F4F5F7",color:statusColors[o.status]?.color??"#8888AA"}}>{o.status.replace(/_/g," ")}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:12}}>
-            <Link href="/stock" className="btn-pink">📦 Browse Stock</Link>
-            <Link href="/orders" className="btn-ghost">📋 My Orders</Link>
-          </div>
-        </div>
+      <div className="quick-btns" style={{marginTop:20}}>
+        <Link href="/stock" className="btn-cyan">📦 Browse Stock</Link>
+        <Link href="/orders" className="btn-ghost">📋 My Orders</Link>
       </div>
     </div>
     </>

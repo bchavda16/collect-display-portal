@@ -8,7 +8,7 @@ const navItems = [
   { href: "/stock", label: "Stock", icon: "📦" },
   { href: "/offers", label: "Offers", icon: "💬" },
   { href: "/orders", label: "Orders", icon: "📋" },
-  { href: "/basket", label: "Basket", icon: "🛒", badge: true },
+  { href: "/checkout", label: "Basket", icon: "🛒", badge: true },
   { href: "/account", label: "Account", icon: "👤" },
 ]
 
