@@ -18,10 +18,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!session?.user || (session.user as any).role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   const body = await req.json()
   const { businessName, contactName, phone, vatNumber, paymentTerms, creditLimitPence, isActive, address } = body
-
   const retailer = await prisma.retailer.findUnique({ where: { id: params.id }, include: { user: true } })
   if (!retailer) return NextResponse.json({ error: "Not found" }, { status: 404 })
-
   await prisma.$transaction(async (tx) => {
     await tx.retailer.update({
       where: { id: params.id },
@@ -52,9 +50,27 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session?.user || (session.user as any).role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  const retailer = await prisma.retailer.findUnique({ where: { id: params.id }, include: { user: true } })
+
+  const retailer = await prisma.retailer.findUnique({
+    where: { id: params.id },
+    include: { user: true }
+  })
   if (!retailer) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  // Delete user which cascades to retailer
-  await prisma.user.delete({ where: { id: retailer.userId } })
+
+  // Delete in correct order to avoid FK constraint errors
+  await prisma.$transaction(async (tx) => {
+    // Clear basket
+    await tx.savedBasketItem.deleteMany({ where: { retailerId: params.id } })
+    // Clear addresses
+    await tx.address.deleteMany({ where: { retailerId: params.id } })
+    // Clear offers
+    await tx.productOffer.deleteMany({ where: { retailerId: params.id } })
+    // Nullify orders (keep order history but detach from retailer)
+    // We can't delete orders as they're business records, so we just delete the retailer
+    await tx.retailer.delete({ where: { id: params.id } })
+    // Delete user account
+    await tx.user.delete({ where: { id: retailer.userId } })
+  })
+
   return NextResponse.json({ success: true })
 }
