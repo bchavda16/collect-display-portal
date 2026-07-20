@@ -1,259 +1,258 @@
-// ============================================================
-// collect&display Portal — Email Service (Resend)
-// ============================================================
+import { Resend } from "resend"
 
-import { Resend } from "resend";
-import type { EmailTemplate } from "@/types";
+const resend = new Resend(process.env.RESEND_API_KEY)
+const FROM = process.env.EMAIL_FROM ?? "orders@collectanddisplay.com"
+const REPLY_TO = process.env.REPLY_TO ?? "bhavik@collectanddisplay.com"
+const PORTAL_URL = process.env.NEXTAUTH_URL ?? "https://collectanddisplay.netlify.app"
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const fmt = (p: number) => `£${(p / 100).toFixed(2)}`
 
-const FROM = `${process.env.EMAIL_FROM_NAME ?? "collect&display"} <${process.env.EMAIL_FROM ?? "orders@collectanddisplay.com"}>`;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@collectanddisplay.com";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-// ── Template builders ────────────────────────────────────────
-
-function baseTemplate(content: string, title: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${title}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; margin: 0; padding: 40px 20px; }
-    .container { max-width: 560px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #0B0B17, #1C1C3A); padding: 32px; text-align: center; }
-    .brand { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-    .brand span { color: #E8334A; }
-    .body { padding: 32px; }
-    h1 { font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
-    p { color: #475569; line-height: 1.6; font-size: 15px; margin: 0 0 16px; }
-    .btn { display: inline-block; background: #E8334A; color: #fff; text-decoration: none; padding: 13px 28px; border-radius: 9px; font-weight: 700; font-size: 14px; margin: 8px 0; }
-    .info-box { background: #f8fafc; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
-    .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-    .info-row:last-child { border-bottom: none; }
-    .label { color: #64748b; }
-    .value { font-weight: 600; color: #0f172a; }
-    .footer { background: #f8fafc; padding: 20px 32px; text-align: center; color: #94a3b8; font-size: 12px; }
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="brand">collect<span>&amp;</span>display</div>
-      <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:4px;letter-spacing:0.1em;text-transform:uppercase">Distribution Portal</div>
-    </div>
-    <div class="body">${content}</div>
-    <div class="footer">
-      <p style="margin:0 0 4px">${process.env.COMPANY_NAME ?? "Collect and Display Ltd"}</p>
-      <p style="margin:0">${process.env.COMPANY_ADDRESS_LINE1 ?? ""} · ${process.env.COMPANY_POSTCODE ?? ""}</p>
-      <p style="margin:8px 0 0"><a href="${APP_URL}" style="color:#E8334A">collectanddisplay.com</a></p>
-    </div>
+const header = `
+<div style="background:#080c14;padding:24px 32px">
+  <div style="font-size:20px;font-weight:800;color:white;letter-spacing:-.3px;font-family:system-ui,sans-serif">
+    collect<span style="color:#88dde1">&amp;</span>display
   </div>
-</body>
-</html>`;
+  <div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:3px;font-family:system-ui,sans-serif">Distribution Portal</div>
+</div>`
+
+const footer = `
+<div style="padding:20px 32px;text-align:center;background:#f8fafb;border-top:1px solid #eee">
+  <p style="font-size:12px;color:#aaa;margin:0;font-family:system-ui,sans-serif">
+    collect&amp;display · <a href="${PORTAL_URL}" style="color:#88dde1;text-decoration:none">Visit Portal</a> · Reply to this email to contact us
+  </p>
+</div>`
+
+const wrap = (content: string) => `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:20px;background:#f0fafb;font-family:system-ui,sans-serif">
+<div style="max-width:580px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;border:1px solid #e0f0f1">
+  ${header}
+  <div style="padding:32px">
+    ${content}
+  </div>
+  ${footer}
+</div>
+</body></html>`
+
+const btn = (text: string, url: string) =>
+  `<div style="text-align:center;margin-top:24px">
+    <a href="${url}" style="display:inline-block;padding:12px 28px;background:#88dde1;color:#0a1420;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:.02em">${text}</a>
+  </div>`
+
+const infoBox = (rows: [string, string][]) =>
+  `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fafb;border-radius:10px;margin-bottom:20px">
+    ${rows.map(([l, v]) => `<tr>
+      <td width="50%" style="padding:10px 20px;font-size:13px;color:#888;font-family:system-ui,sans-serif">${l}</td>
+      <td width="50%" style="padding:10px 20px;font-size:13px;font-weight:600;color:#0d1117;font-family:system-ui,sans-serif">${v}</td>
+    </tr>`).join("")}
+  </table>`
+
+
+const noteBox = (text: string) =>
+  `<div style="border-left:3px solid #88dde1;background:#f0fafb;padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;color:#444;margin:16px 0">${text}</div>`
+
+// ── ORDER CONFIRMATION ─────────────────────────────────────────
+export async function sendOrderConfirmation({ to, retailerName, orderNumber, items, subtotalPence, vatPence, totalPence, poReference }: {
+  to: string; retailerName: string; orderNumber: string
+  items: { productName: string; sku: string; quantity: number; unitCostPence: number; lineTotalPence: number }[]
+  subtotalPence: number; vatPence: number; totalPence: number; poReference?: string | null
+}) {
+  const rows = items.map(i => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #f4f4f4;font-size:13px;color:#0d1117">${i.productName}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f4f4f4;font-size:11px;color:#aaa;font-family:monospace">${i.sku}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f4f4f4;font-size:13px;color:#0d1117;text-align:center">×${i.quantity}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f4f4f4;font-size:13px;font-weight:600;color:#0d1117;text-align:right">${fmt(i.lineTotalPence)}</td>
+    </tr>`).join("")
+
+  console.log('[RESEND] Attempting to send to:', to)
+  try {
+    const result = await resend.emails.send({
+      from: `Collect & Display <${FROM}>`,
+      to,
+      replyTo: REPLY_TO,
+      subject: `Order confirmed — ${orderNumber}`,
+      html: wrap(`
+        <h2 style="font-size:20px;font-weight:700;color:#0d1117;margin:0 0 6px">Order received ✓</h2>
+        <p style="font-size:14px;color:#666;margin:0 0 20px;line-height:1.6">Hi ${retailerName}, your order has been placed successfully.</p>
+        ${infoBox([
+          ["Order Number", orderNumber],
+          ...(poReference ? [["PO Reference", poReference] as [string, string]] : []),
+        ])}
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+          <thead>
+            <tr style="border-bottom:2px solid #f0fafb">
+              <th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:8px 0;text-align:left">Product</th>
+              <th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:8px 0;text-align:left">SKU</th>
+              <th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:8px 0;text-align:center">Qty</th>
+              <th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:8px 0;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <table style="width:100%;border-collapse:collapse;border-top:2px solid #f0fafb;margin-top:12px">
+          <tr><td style="padding:6px 0;font-size:13px;color:#888">Subtotal (ex. VAT):</td><td style="padding:6px 0;font-size:13px;color:#888;text-align:right">${fmt(subtotalPence)}</td></tr>
+          <tr><td style="padding:6px 0;font-size:13px;color:#888">VAT (20%):</td><td style="padding:6px 0;font-size:13px;color:#888;text-align:right">${fmt(vatPence)}</td></tr>
+          <tr style="border-top:1px solid #f0fafb"><td style="padding:8px 0;font-size:15px;font-weight:700;color:#1a9da3">Total (inc. VAT):</td><td style="padding:8px 0;font-size:15px;font-weight:700;color:#1a9da3;text-align:right">${fmt(totalPence)}</td></tr>
+        </table>
+        ${btn("View Order →", `${PORTAL_URL}/orders`)}
+      `),
+    })
+    console.log('[EMAIL RESULT]', JSON.stringify(result))
+    return result
+  } catch(err) {
+    console.error('[EMAIL ERROR]', err)
+    throw err
+  }
 }
 
-// ── Email senders ────────────────────────────────────────────
-
-export async function sendOrderConfirmation(data: {
-  to: string;
-  retailerName: string;
-  orderNumber: string;
-  poReference: string;
-  items: { productName: string; sku: string; quantity: number; unitCostPence: number; lineTotalPence: number }[];
-  subtotalPence: number;
-  vatPence: number;
-  totalPence: number;
-  poReference?: string | null;
+// ── ORDER STATUS UPDATE ────────────────────────────────────────
+export async function sendStatusUpdate({ to, businessName, orderNumber, newStatus, trackingNumber, carrierName, note }: {
+  to: string; businessName: string; orderNumber: string; newStatus: string
+  trackingNumber?: string; carrierName?: string; note?: string
 }) {
-  const itemRows = data.items
-    .map(
-      (i) => `
-    <div class="info-row">
-      <span class="label">${i.productName} × ${i.quantity} CDU</span>
-      <span class="value">£${i.lineTotalPence/100).toFixed(2)}</span>
-    </div>`
-    )
-    .join("");
+  const statusLabels: Record<string,string> = {
+    PLACED:"Order Placed", CONFIRMED:"Confirmed", PROCESSING:"Processing",
+    PICKED:"Picked", PACKED:"Packed & Ready", DISPATCHED:"Dispatched",
+    OUT_FOR_DELIVERY:"Out for Delivery", DELIVERED:"Delivered", CANCELLED:"Cancelled"
+  }
+  const statusColors: Record<string,string> = {
+    PLACED:"#88dde1", CONFIRMED:"#88dde1", PROCESSING:"#a78bfa",
+    PICKED:"#a78bfa", PACKED:"#fbbf24", DISPATCHED:"#34d399",
+    OUT_FOR_DELIVERY:"#34d399", DELIVERED:"#6ee7b7", CANCELLED:"#f87171"
+  }
+  const label = statusLabels[newStatus] ?? newStatus.replace(/_/g, " ")
+  const color = statusColors[newStatus] ?? "#88dde1"
 
-  const html = baseTemplate(
-    `
-    <h1>Order Confirmed ✓</h1>
-    <p>Hi ${data.retailerName}, your order has been received and is being processed.</p>
-    <div class="info-box">
-      <div class="info-row"><span class="label">Order Number</span><span class="value">${data.orderNumber}</span></div>
-      <div class="info-row"><span class="label">PO Reference</span><span class="value">${data.poReference}</span></div>
-    </div>
-    <div class="info-box">
-      ${itemRows}
-      <div class="info-row"><span class="label">Subtotal (ex-VAT)</span><span class="value">£${(data.subtotalPence/100).toFixed(2)}</span></div>
-      <div class="info-row"><span class="label">VAT (20%)</span><span class="value">£${data.vatPence.toFixed(2)}</span></div>
-      <div class="info-row"><span class="label" style="font-weight:700">Total</span><span class="value" style="color:#E8334A;font-size:16px">£${data.totalPence.toFixed(2)}</span></div>
-    </div>
-    <a href="${APP_URL}/orders" class="btn">View Your Order →</a>
-    <p style="margin-top:20px;font-size:13px;color:#94a3b8">We'll send you another email when your order is dispatched.</p>
-  `,
-    `Order ${data.orderNumber} Confirmed`
-  );
-
-  console.log('[RESEND] Attempting to send to:', data.to)
+  console.log('[RESEND] Attempting to send to:', to)
   return resend.emails.send({
-    from: FROM,
-    to: data.to,
-    subject: `Order ${data.orderNumber} confirmed — collect&display`,
-    html,
-  });
+    from: `Collect & Display <${FROM}>`,
+    to,
+    replyTo: REPLY_TO,
+    subject: `${orderNumber} — ${label}`,
+    html: wrap(`
+      <div style="text-align:center;margin-bottom:24px">
+        <span style="display:inline-block;padding:8px 20px;background:${color}22;border:1.5px solid ${color}55;border-radius:99px;font-size:13px;font-weight:700;color:${color};letter-spacing:.04em">${label}</span>
+      </div>
+      <h2 style="font-size:20px;font-weight:700;color:#0d1117;margin:0 0 8px;text-align:center">Your order has been updated</h2>
+      <p style="font-size:14px;color:#666;margin:0 0 20px;text-align:center;line-height:1.6">Hi ${businessName}, your order <strong>${orderNumber}</strong> is now <strong>${label.toLowerCase()}</strong>.</p>
+      ${trackingNumber ? `
+      <div style="background:#f0fafb;border:1.5px solid #88dde1;border-radius:12px;padding:16px 20px;text-align:center;margin-bottom:20px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:6px">${carrierName ?? "Carrier"} Tracking Number</div>
+        <div style="font-size:18px;font-weight:700;color:#1a9da3;font-family:monospace">${trackingNumber}</div>
+      </div>` : ""}
+      ${newStatus === "DELIVERED" ? `<div style="background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;font-size:14px;color:#166534;margin-bottom:20px">🎉 Your order has been delivered. Thank you for ordering with collect&display!</div>` : ""}
+      ${note ? noteBox(`Note from our team: ${note}`) : ""}
+      ${btn("Track Your Order →", `${PORTAL_URL}/orders`)}
+    `),
+  })
 }
 
-export async function sendStatusUpdate(data: {
-  to: string;
-  retailerName: string;
-  orderNumber: string;
-  status: string;
-  statusLabel: string;
-  trackingNumber?: string;
-  trackingUrl?: string;
+// ── OFFER UPDATE ───────────────────────────────────────────────
+export async function sendOfferUpdate({ to, businessName, productName, action, offeredPricePence, counterPricePence, adminNote }: {
+  to: string; businessName: string; productName: string
+  action: "accepted" | "declined" | "countered"
+  offeredPricePence: number; counterPricePence?: number; adminNote?: string
 }) {
-  const trackingSection =
-    data.trackingNumber
-      ? `<div class="info-box">
-          <div class="info-row"><span class="label">Courier</span><span class="value">${data.trackingNumber}</span></div>
-          ${data.trackingUrl ? `<div style="margin-top:12px"><a href="${data.trackingUrl}" class="btn">Track Your Parcel →</a></div>` : ""}
-        </div>`
-      : "";
+  const titles = { accepted: "Your offer was accepted! 🎉", declined: "Your offer was declined", countered: "Counter-offer received" }
+  const subtitles = {
+    accepted: `Your offer of ${fmt(offeredPricePence)}/unit has been accepted. The items have been added to your basket — complete checkout to confirm.`,
+    declined: `Unfortunately your offer of ${fmt(offeredPricePence)}/unit was not accepted this time.`,
+    countered: `We've responded to your offer of ${fmt(offeredPricePence)}/unit with a counter-offer of ${fmt(counterPricePence!)}/unit.`,
+  }
 
-  const html = baseTemplate(
-    `
-    <h1>Order Update</h1>
-    <p>Hi ${data.retailerName}, your order <strong>${data.orderNumber}</strong> has been updated.</p>
-    <div class="info-box">
-      <div class="info-row"><span class="label">Status</span><span class="value">${data.statusLabel}</span></div>
-    </div>
-    ${trackingSection}
-    <a href="${APP_URL}/orders" class="btn">View Order →</a>
-  `,
-    `Order ${data.orderNumber} Update`
-  );
-
-  console.log('[RESEND] Attempting to send to:', data.to)
+  console.log('[RESEND] Attempting to send to:', to)
   return resend.emails.send({
-    from: FROM,
-    to: data.to,
-    subject: `Order ${data.orderNumber}: ${data.statusLabel} — collect&display`,
-    html,
-  });
+    from: `Collect & Display <${FROM}>`,
+    to,
+    replyTo: REPLY_TO,
+    subject: `Offer update — ${productName}`,
+    html: wrap(`
+      <h2 style="font-size:20px;font-weight:700;color:#0d1117;margin:0 0 8px">${titles[action]}</h2>
+      <p style="font-size:14px;color:#666;margin:0 0 20px;line-height:1.6">Hi ${businessName}, ${subtitles[action]}</p>
+      ${infoBox([
+        ["Product", productName],
+        ["Your offer", `${fmt(offeredPricePence)}/unit`],
+        ...(counterPricePence ? [["Counter-offer", `${fmt(counterPricePence)}/unit`] as [string,string]] : []),
+      ])}
+      ${adminNote ? noteBox(`Message from collect&display: ${adminNote}`) : ""}
+      ${btn("View My Offers →", `${PORTAL_URL}/offers`)}
+    `),
+  })
 }
 
-export async function sendInvoiceNotification(data: {
-  to: string;
-  retailerName: string;
-  orderNumber: string;
-  invoiceUrl: string;
-  grandTotal: number;
+// ── WELCOME EMAIL ──────────────────────────────────────────────
+export async function sendWelcomeEmail({ to, businessName, contactName, tempPassword, loginUrl }: {
+  to: string; businessName: string; contactName: string; tempPassword: string; loginUrl: string
 }) {
-  const html = baseTemplate(
-    `
-    <h1>Invoice Ready</h1>
-    <p>Hi ${data.retailerName}, your invoice for order <strong>${data.orderNumber}</strong> is now available.</p>
-    <div class="info-box">
-      <div class="info-row"><span class="label">Amount Due</span><span class="value" style="color:#E8334A;font-size:16px">£${data.totalPence.toFixed(2)}</span></div>
-    </div>
-    <a href="${data.invoiceUrl}" class="btn">Download Invoice →</a>
-    <a href="${APP_URL}/orders" style="display:inline-block;margin-left:12px;color:#E8334A;text-decoration:none;font-size:14px">View in Portal →</a>
-  `,
-    `Invoice for ${data.orderNumber}`
-  );
-
-  console.log('[RESEND] Attempting to send to:', data.to)
+  console.log('[RESEND] Attempting to send to:', to)
   return resend.emails.send({
-    from: FROM,
-    to: data.to,
-    subject: `Invoice ready for order ${data.orderNumber} — collect&display`,
-    html,
-  });
+    from: `Collect & Display <${FROM}>`,
+    to,
+    replyTo: REPLY_TO,
+    subject: `Welcome to collect&display — your account is ready`,
+    html: wrap(`
+      <h2 style="font-size:20px;font-weight:700;color:#0d1117;margin:0 0 8px">Welcome, ${contactName}! 👋</h2>
+      <p style="font-size:14px;color:#666;margin:0 0 24px;line-height:1.6">Your trade account for <strong>${businessName}</strong> has been approved. You can now log in and start ordering.</p>
+      <div style="background:#f0fafb;border:1.5px solid #88dde1;border-radius:12px;padding:20px;margin-bottom:20px">
+        <div style="margin-bottom:14px">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:4px">Email</div>
+          <div style="font-size:14px;color:#0d1117;font-weight:500">${to}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:6px">Temporary Password</div>
+          <div style="font-family:monospace;background:white;padding:10px 14px;border-radius:8px;font-size:16px;color:#1a9da3;font-weight:700;display:inline-block;border:1px solid #e0f0f1">${tempPassword}</div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#888;margin:0 0 20px">Please change your password after your first login via Account → Security.</p>
+      ${btn("Log in now →", loginUrl)}
+    `),
+  })
 }
 
-export async function sendPasswordReset(data: {
-  to: string;
-  name: string;
-  resetUrl: string;
+// ── APPLICATION UPDATE ─────────────────────────────────────────
+export async function sendApplicationUpdate({ to, businessName, status, note }: {
+  to: string; businessName: string; status: "approved" | "declined"; note?: string
 }) {
-  const html = baseTemplate(
-    `
-    <h1>Reset Your Password</h1>
-    <p>Hi ${data.name}, we received a request to reset the password for your collect&display account.</p>
-    <p>Click the button below to set a new password. This link expires in 1 hour.</p>
-    <a href="${data.resetUrl}" class="btn">Reset Password →</a>
-    <p style="margin-top:24px;font-size:13px;color:#94a3b8">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
-  `,
-    "Reset your password"
-  );
-
-  console.log('[RESEND] Attempting to send to:', data.to)
+  const approved = status === "approved"
+  console.log('[RESEND] Attempting to send to:', to)
   return resend.emails.send({
-    from: FROM,
-    to: data.to,
-    subject: "Reset your collect&display password",
-    html,
-  });
+    from: `Collect & Display <${FROM}>`,
+    to,
+    replyTo: REPLY_TO,
+    subject: approved ? `Your application has been approved!` : `Update on your application`,
+    html: wrap(`
+      <h2 style="font-size:20px;font-weight:700;color:#0d1117;margin:0 0 8px">${approved ? "Application approved! 🎉" : "Application update"}</h2>
+      <p style="font-size:14px;color:#666;margin:0 0 20px;line-height:1.6">Hi ${businessName}, ${approved
+        ? "your trade account application has been approved. You will receive a separate email with your login details shortly."
+        : "thank you for applying. Unfortunately we are unable to approve your application at this time."
+      }</p>
+      ${note ? noteBox(note) : ""}
+      ${approved ? btn("Go to Portal →", `${PORTAL_URL}/login`) : ""}
+    `),
+  })
 }
 
-export async function sendWelcomeEmail(data: {
-  to: string;
-  businessName: string;
-  tempPassword: string;
+// ── ADMIN NEW ORDER ALERT ──────────────────────────────────────
+export async function sendAdminNewOrderAlert({ orderNumber, retailerName, totalPence, itemCount }: {
+  orderNumber: string; retailerName: string; totalPence: number; itemCount: number
 }) {
-  const html = baseTemplate(
-    `
-    <h1>Welcome to collect&display 🎉</h1>
-    <p>Hi ${data.businessName}, your wholesale account is ready.</p>
-    <div class="info-box">
-      <div class="info-row"><span class="label">Email</span><span class="value">${data.to}</span></div>
-      <div class="info-row"><span class="label">Temporary Password</span><span class="value">${data.tempPassword}</span></div>
-    </div>
-    <p>Please sign in and change your password immediately.</p>
-    <a href="${APP_URL}/login" class="btn">Sign In to Portal →</a>
-  `,
-    "Welcome to collect&display"
-  );
-
-  console.log('[RESEND] Attempting to send to:', data.to)
+  const adminEmail = process.env.ADMIN_EMAIL ?? "bhavik@collectanddisplay.com"
+  console.log('[RESEND] Attempting to send admin alert to:', adminEmail)
   return resend.emails.send({
-    from: FROM,
-    to: data.to,
-    subject: "Your collect&display wholesale account is ready",
-    html,
-  });
-}
-
-export async function sendAdminNewOrderAlert(data: {
-  orderNumber: string;
-  retailerName: string;
-  grandTotal: number;
-  itemCount: number;
-}) {
-  const html = baseTemplate(
-    `
-    <h1>New Order Received</h1>
-    <div class="info-box">
-      <div class="info-row"><span class="label">Order</span><span class="value">${data.orderNumber}</span></div>
-      <div class="info-row"><span class="label">Retailer</span><span class="value">${data.retailerName}</span></div>
-      <div class="info-row"><span class="label">Items</span><span class="value">${data.itemCount} lines</span></div>
-      <div class="info-row"><span class="label">Total</span><span class="value" style="color:#E8334A">£${data.totalPence.toFixed(2)}</span></div>
-    </div>
-    <a href="${APP_URL}/admin/orders" class="btn">View in Admin →</a>
-  `,
-    `New Order ${data.orderNumber}`
-  );
-
-  console.log('[RESEND] Attempting to send to:', data.to)
-  return resend.emails.send({
-    from: FROM,
-    to: ADMIN_EMAIL,
-    subject: `New order ${data.orderNumber} — ${data.retailerName}`,
-    html,
-  });
+    from: `Collect & Display <${FROM}>`,
+    to: adminEmail,
+    replyTo: REPLY_TO,
+    subject: `New order — ${orderNumber} from ${retailerName}`,
+    html: wrap(`
+      <h2 style="font-size:18px;font-weight:700;color:#0d1117;margin:0 0 16px">New order received</h2>
+      ${infoBox([
+        ["Order", orderNumber],
+        ["Retailer", retailerName],
+        ["Value", fmt(totalPence)],
+        ["Lines", String(itemCount)],
+      ])}
+      ${btn("View in Admin →", `${PORTAL_URL}/admin/orders`)}
+    `),
+  })
 }

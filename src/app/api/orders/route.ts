@@ -127,13 +127,13 @@ export async function POST(req: NextRequest) {
     console.log('[EMAIL DEBUG] retailerUser:', retailerUser?.email, 'userId:', retailer.userId)
     if (retailerUser) {
       console.log('[EMAIL DEBUG] sending order confirmation to:', retailerUser.email)
-      sendOrderConfirmation({
+      try { const emailResult = await sendOrderConfirmation({
         to: retailerUser.email,
         retailerName: retailer.businessName,
         orderNumber: order.orderNumber,
         items: order.items.map((i) => ({ productName: i.productName, sku: i.sku, quantity: i.quantity, unitCostPence: i.unitCostPence, lineTotalPence: i.lineTotalPence })),
         subtotalPence, vatPence, totalPence, poReference,
-      }).catch(console.error)
+      }); console.log('[EMAIL RESULT]', JSON.stringify(emailResult)) } catch(emailErr) { console.error('[EMAIL ERROR]', emailErr) }
 
       sendAdminNewOrderAlert({ orderNumber: order.orderNumber, retailerName: retailer.businessName, totalPence, itemCount: order.items.length }).catch(console.error)
     }

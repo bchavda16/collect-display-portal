@@ -1,1 +1,4 @@
 .next
+
+# Local Netlify folder
+.netlify

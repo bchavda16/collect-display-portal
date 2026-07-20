@@ -26,10 +26,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           include: { retailer: { select: { id: true } } },
         })
 
+        console.log('[AUTH] User found:', !!user, 'Active:', user?.isActive)
         if (!user || !user.isActive) return null
 
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash)
-        if (!valid) return null
+        console.log('[AUTH] Password valid:', valid)
+        if (!valid) { console.log('[AUTH] Invalid password'); return null }
 
         await prisma.user.update({
           where: { id: user.id },
