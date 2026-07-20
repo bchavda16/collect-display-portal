@@ -171,7 +171,7 @@ export default function StockPage() {
           <p style={{fontSize:13,color:"#8888AA",margin:0}}>Try adjusting your search or filters</p>
         </div>
       ) : (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:18,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:24}}>
           {products.map((p:any)=>{
             const qty=getQty(p), max=maxQty(p), isAdded=added[p.id]
             const unavailable=p.status==="OUT_OF_STOCK"||p.stockUnits===0
@@ -182,7 +182,7 @@ export default function StockPage() {
               <div key={p.id} className="stock-card" style={{opacity:(unavailable||comingSoon)?.65:1}}>
                 {/* Product Image */}
                 <div style={{height:185,background:imgUrl?"transparent":"linear-gradient(135deg,#e6f9fa 0%,#f0f9ff 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:46,position:"relative",overflow:"hidden"}}>
-                  {imgUrl && <img src={imgUrl} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",inset:0}} />}
+                  {imgUrl && <img src={imgUrl} alt={p.name} style={{width:"100%",height:"100%",objectFit:"contain",position:"absolute",inset:0,padding:4}} />}
                   {!imgUrl && <span style={{opacity:.5}}>🎁</span>}
                   {/* Badges */}
                   {p.badges?.includes("BEST_SELLER") && <span style={{position:"absolute",top:10,left:10,background:"rgba(255,255,255,.95)",backdropFilter:"blur(8px)",color:"#1a9da3",border:"1px solid rgba(136,221,225,.4)",borderRadius:7,padding:"3px 9px",fontSize:10,fontWeight:700,letterSpacing:".03em"}}>⭐ BEST SELLER</span>}

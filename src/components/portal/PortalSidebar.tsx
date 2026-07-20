@@ -44,7 +44,7 @@ export function PortalSidebar({ onBasketOpen }: { onBasketOpen?: () => void }) {
   }
 
   return (
-    <aside style={s.sidebar}>
+    <aside style={s.sidebar} className="portal-sidebar">
       <div style={s.logoArea}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 3, height: 28, borderRadius: 99, background: '#88dde1' }} />

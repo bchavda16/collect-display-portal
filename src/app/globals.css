@@ -154,3 +154,21 @@
   overflow-y: auto;
   min-width: 0;
 }
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+  .portal-layout {
+    flex-direction: column !important;
+  }
+  .portal-sidebar {
+    display: none !important;
+  }
+  .portal-main {
+    width: 100% !important;
+    min-height: 100vh;
+  }
+  /* Stock grid - 1 column on mobile */
+  .stock-grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
+}

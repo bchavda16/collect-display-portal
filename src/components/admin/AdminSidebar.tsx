@@ -3,16 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { useQuery } from '@tanstack/react-query'
 import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut, FileText, Tag } from 'lucide-react'
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/orders',    label: 'Orders',    icon: ClipboardList },
-  { href: '/admin/products',  label: 'Products',  icon: Package },
-  { href: '/admin/retailers', label: 'Retailers', icon: Building2 },
-  { href: '/admin/imports',   label: 'Imports',   icon: Upload },
-  { href: '/admin/offers',    label: 'Offers',    icon: Tag },
-  { href: '/admin/applications', label: 'Applications', icon: FileText },
+  { href: '/admin/dashboard',     label: 'Dashboard',     icon: LayoutDashboard, badge: null },
+  { href: '/admin/orders',        label: 'Orders',        icon: ClipboardList,   badge: 'orders' },
+  { href: '/admin/products',      label: 'Inventory',     icon: Package,         badge: null },
+  { href: '/admin/retailers',     label: 'Retailers',     icon: Building2,       badge: null },
+  { href: '/admin/imports',       label: 'Imports',       icon: Upload,          badge: null },
+  { href: '/admin/offers',        label: 'Offers',        icon: Tag,             badge: 'offers' },
+  { href: '/admin/applications',  label: 'Applications',  icon: FileText,        badge: 'applications' },
 ]
 
 const s = {
@@ -33,6 +34,28 @@ const s = {
 export function AdminSidebar() {
   const pathname = usePathname()
 
+  const { data: counts } = useQuery({
+    queryKey: ['admin-badges'],
+    queryFn: async () => {
+      const [orders, offers, applications] = await Promise.all([
+        fetch('/api/orders?status=PLACED&limit=1').then(r => r.json()),
+        fetch('/api/offers?status=PENDING').then(r => r.json()),
+        fetch('/api/applications?status=PENDING').then(r => r.json()),
+      ])
+      return {
+        orders: orders.total ?? 0,
+        offers: offers.data?.length ?? 0,
+        applications: applications.data?.length ?? 0,
+      }
+    },
+    refetchInterval: 30000, // refresh every 30 seconds
+  })
+
+  const getBadge = (key: string | null) => {
+    if (!key || !counts) return 0
+    return (counts as any)[key] ?? 0
+  }
+
   return (
     <aside style={s.sidebar}>
       <div style={s.logoArea}>
@@ -46,12 +69,31 @@ export function AdminSidebar() {
       </div>
 
       <nav style={s.nav}>
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, badge }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
+          const count = getBadge(badge)
           return (
             <Link key={href} href={href} style={{ ...s.navItem, ...(active ? s.navActive : {}) }}>
               <Icon size={16} />
-              {label}
+              <span style={{ flex: 1 }}>{label}</span>
+              {count > 0 && (
+                <span style={{
+                  background: '#e11d48',
+                  color: 'white',
+                  borderRadius: 99,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  minWidth: 18,
+                  height: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 5px',
+                  lineHeight: 1,
+                }}>
+                  {count > 99 ? '99+' : count}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -64,8 +106,12 @@ export function AdminSidebar() {
             <div style={s.userName}>Administrator</div>
             <div style={s.userRole}>collect&display</div>
           </div>
-          <button onClick={() => signOut({ callbackUrl: '/login' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8888AA', padding: 4 }} title="Sign out">
-            <LogOut size={14} />
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8888AA', padding: 4, display: 'flex', alignItems: 'center' }}
+            title="Sign out"
+          >
+            <LogOut size={15} />
           </button>
         </div>
       </div>
