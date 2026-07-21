@@ -25,6 +25,26 @@ export default function AdminOrdersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingItem, setEditingItem] = useState<{id:string;unitCost:string;quantity:string}|null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string|null>(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ retailerId:"", businessName:"", poReference:"", deliveryNotes:"" })
+  const [createItems, setCreateItems] = useState<{productId:string;productName:string;sku:string;quantity:number;unitCostPence:number}[]>([])
+  const [productSearch, setProductSearch] = useState("")
+  const [createError, setCreateError] = useState("")
+  const [createLoading, setCreateLoading] = useState(false)
+
+  const { data: retailersData } = useQuery({
+    queryKey: ["admin-retailers-list"],
+    queryFn: async () => { const r = await fetch("/api/retailers?limit=100"); return r.json() },
+  })
+
+  const { data: productsData } = useQuery({
+    queryKey: ["products-search", productSearch],
+    queryFn: async () => {
+      const p = new URLSearchParams({ limit: "10", ...(productSearch&&{search:productSearch}) })
+      const r = await fetch("/api/products?"+p); return r.json()
+    },
+    enabled: showCreate,
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-orders", status, page],
@@ -78,6 +98,39 @@ export default function AdminOrdersPage() {
     },
   })
 
+  const createMutation = useMutation({
+    mutationFn: async (body: any) => {
+      const r = await fetch("/api/admin/orders", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
+      return r.json()
+    },
+    onSuccess: (d) => {
+      if (d.success) { qc.invalidateQueries({queryKey:["admin-orders"]}); setShowCreate(false); setCreateForm({retailerId:"",businessName:"",poReference:"",deliveryNotes:""}); setCreateItems([]); setCreateError("") }
+      else { setCreateError(d.error ?? "Failed to create order") }
+    },
+  })
+
+  const addProductToOrder = (product: any) => {
+    if (createItems.find(i => i.productId === product.id)) return
+    setCreateItems(prev => [...prev, { productId: product.id, productName: product.name, sku: product.sku, quantity: product.cduSize, unitCostPence: product.unitCostPence }])
+    setProductSearch("")
+  }
+
+  const handleCreateOrder = async () => {
+    setCreateError("")
+    if (!createItems.length) { setCreateError("Add at least one product"); return }
+    if (!createForm.retailerId && !createForm.businessName) { setCreateError("Select a retailer or enter a business name"); return }
+    createMutation.mutate({
+      retailerId: createForm.retailerId || undefined,
+      businessName: createForm.businessName || undefined,
+      poReference: createForm.poReference || undefined,
+      deliveryNotes: createForm.deliveryNotes || undefined,
+      items: createItems.map(i => ({ productId: i.productId, quantity: i.quantity, unitCostPence: i.unitCostPence })),
+    })
+  }
+
+  const createSubtotal = createItems.reduce((s,i) => s + i.unitCostPence * i.quantity, 0)
+  const createTotal = Math.round(createSubtotal * 1.2)
+
   const orders = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const allSelected = orders.length > 0 && orders.every((o: any) => selected.has(o.id))
@@ -129,7 +182,10 @@ export default function AdminOrdersPage() {
 
   return (
     <div style={S.page}>
-      <h1 style={S.title}>Orders</h1>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+        <h1 style={S.title}>Orders</h1>
+        <button style={S.btnPink} onClick={()=>setShowCreate(true)}>+ Create Order</button>
+      </div>
       <p style={S.sub}>{data?.total ?? 0} total</p>
 
       <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:16}}>
@@ -338,6 +394,102 @@ export default function AdminOrdersPage() {
             <div style={{display:"flex",gap:10,marginTop:20}}>
               <button style={{...S.btnGhost,flex:1}} onClick={()=>setEditing(null)}>Cancel</button>
               <button style={{...S.btnPink,flex:1}} onClick={()=>updateMutation.mutate({id:editing.id,status:newStatus,trackingNumber:tracking||undefined,carrierName:carrier||undefined,note:note||undefined})} disabled={updateMutation.isPending}>{updateMutation.isPending?"Saving…":"Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CREATE ORDER MODAL */}
+      {showCreate && (
+        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowCreate(false)}>
+          <div style={{...S.modal,maxWidth:620}}>
+            <div style={{fontSize:17,fontWeight:700,color:"#1A1A2E",margin:"0 0 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              Create Order
+              <button onClick={()=>setShowCreate(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:"#8888AA",padding:0}}>×</button>
+            </div>
+
+            {/* Retailer selection */}
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const,letterSpacing:".05em"}}>Retailer Account</label>
+              <select style={S.select} value={createForm.retailerId} onChange={e=>setCreateForm(f=>({...f,retailerId:e.target.value,businessName:""}))}>
+                <option value="">— Select retailer or type name below —</option>
+                {(retailersData?.data??[]).map((r:any) => <option key={r.id} value={r.id}>{r.businessName}</option>)}
+              </select>
+            </div>
+            {!createForm.retailerId && (
+              <div style={{marginBottom:14}}>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const,letterSpacing:".05em"}}>Or type business name</label>
+                <input style={S.input} value={createForm.businessName} onChange={e=>setCreateForm(f=>({...f,businessName:e.target.value}))} placeholder="e.g. Galaxy Collectibles Ltd" />
+              </div>
+            )}
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const,letterSpacing:".05em"}}>PO Reference</label>
+                <input style={S.input} value={createForm.poReference} onChange={e=>setCreateForm(f=>({...f,poReference:e.target.value}))} placeholder="e.g. PO-2026-001" />
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const,letterSpacing:".05em"}}>Delivery Notes</label>
+                <input style={S.input} value={createForm.deliveryNotes} onChange={e=>setCreateForm(f=>({...f,deliveryNotes:e.target.value}))} placeholder="Optional" />
+              </div>
+            </div>
+
+            {/* Product search */}
+            <div style={{marginBottom:10}}>
+              <label style={{display:"block",fontSize:11,fontWeight:600,color:"#4A4A6A",marginBottom:5,textTransform:"uppercase" as const,letterSpacing:".05em"}}>Add Products</label>
+              <input style={S.input} value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search products by name or SKU…" />
+              {productSearch && (productsData?.data??[]).length > 0 && (
+                <div style={{border:"1px solid rgba(0,0,0,.12)",borderRadius:8,marginTop:4,overflow:"hidden",background:"white",maxHeight:180,overflowY:"auto" as const}}>
+                  {(productsData?.data??[]).map((p:any) => (
+                    <div key={p.id} style={{padding:"9px 12px",cursor:"pointer",borderBottom:"1px solid rgba(0,0,0,.06)",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}
+                      onClick={()=>addProductToOrder(p)}>
+                      <div>
+                        <span style={{fontWeight:500,color:"#1A1A2E"}}>{p.name}</span>
+                        <span style={{fontSize:11,color:"#8888AA",marginLeft:8,fontFamily:"monospace"}}>{p.sku}</span>
+                      </div>
+                      <span style={{fontSize:12,fontWeight:600,color:"#1a9da3"}}>£{(p.unitCostPence/100).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Order lines */}
+            {createItems.length > 0 && (
+              <div style={{background:"#f8fafb",border:"1px solid rgba(0,0,0,.08)",borderRadius:10,marginBottom:14,overflow:"hidden"}}>
+                {createItems.map((item,i) => (
+                  <div key={item.productId} style={{padding:"10px 12px",borderBottom:i<createItems.length-1?"1px solid rgba(0,0,0,.06)":"none",display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:500,color:"#1A1A2E"}}>{item.productName}</div>
+                      <div style={{fontSize:11,color:"#8888AA",fontFamily:"monospace"}}>{item.sku}</div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                      <input type="number" min="1" value={item.quantity}
+                        onChange={e=>setCreateItems(prev=>prev.map((ci,idx)=>idx===i?{...ci,quantity:parseInt(e.target.value)||1}:ci))}
+                        style={{width:60,padding:"4px 8px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:6,fontSize:12,textAlign:"center" as const}} />
+                      <span style={{fontSize:12,fontWeight:600,color:"#1A1A2E",minWidth:60,textAlign:"right" as const}}>£{((item.unitCostPence*item.quantity)/100).toFixed(2)}</span>
+                      <input type="number" step="0.01" value={(item.unitCostPence/100).toFixed(2)} title="Unit cost £"
+                        onChange={e=>setCreateItems(prev=>prev.map((ci,idx)=>idx===i?{...ci,unitCostPence:Math.round(parseFloat(e.target.value||"0")*100)}:ci))}
+                        style={{width:70,padding:"4px 8px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:6,fontSize:12,textAlign:"center" as const}} />
+                      <button onClick={()=>setCreateItems(prev=>prev.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",cursor:"pointer",color:"#E11D48",fontSize:16,padding:0}}>×</button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{padding:"10px 12px",borderTop:"1px solid rgba(0,0,0,.08)",display:"flex",justifyContent:"space-between",fontSize:13}}>
+                  <span style={{color:"#8888AA"}}>Subtotal (ex. VAT)</span><span style={{fontWeight:600}}>£{(createSubtotal/100).toFixed(2)}</span>
+                </div>
+                <div style={{padding:"6px 12px 10px",display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"#1a9da3"}}>
+                  <span>Total (inc. VAT 20%)</span><span>£{(createTotal/100).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {createError && <div style={{background:"#FFF1F4",border:"1px solid rgba(225,29,72,.2)",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#E11D48",marginBottom:12}}>{createError}</div>}
+
+            <div style={{display:"flex",gap:10}}>
+              <button style={{...S.btnGhost,flex:1}} onClick={()=>setShowCreate(false)}>Cancel</button>
+              <button style={{...S.btnPink,flex:2}} onClick={handleCreateOrder} disabled={createMutation.isPending}>
+                {createMutation.isPending?"Creating…":"Create Order"}
+              </button>
             </div>
           </div>
         </div>
