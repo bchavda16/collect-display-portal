@@ -43,9 +43,9 @@ export function BasketDrawer() {
   return (
     <>
     <style>{`
-      .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+      .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.1);max-height:100vh;overflow:hidden}
       .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08)}
-      .drawer-body{flex:1;overflow-y:auto;padding:16px}
+      .drawer-body{flex:1;overflow-y:auto;padding:16px;max-height:calc(100vh - 140px)}
       .drawer-footer{border-top:1px solid rgba(0,0,0,.08);padding:16px}
       .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:49}
       .basket-item{display:flex;gap:12px;padding:12px;background:#FAFBFC;border:1px solid rgba(0,0,0,.07);border-radius:10px;margin-bottom:8px}
