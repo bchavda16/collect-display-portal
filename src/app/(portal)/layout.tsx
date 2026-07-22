@@ -4,6 +4,7 @@ import { PortalSidebar } from "@/components/portal/PortalSidebar"
 import { BasketDrawer } from "@/components/portal/BasketDrawer"
 import { ProfileBanner } from "@/components/portal/ProfileBanner"
 import { MobileNav } from "@/components/portal/MobileNav"
+import { PresencePing } from "@/components/portal/PresencePing"
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -15,6 +16,7 @@ export default async function PortalLayout({ children }: { children: React.React
       <PortalSidebar />
       <main className="portal-main"><ProfileBanner />{children}</main>
       <MobileNav />
+      <PresencePing />
       <BasketDrawer />
     </div>
   )

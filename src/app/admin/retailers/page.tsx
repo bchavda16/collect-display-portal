@@ -3,6 +3,32 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { formatDate } from "@/lib/utils"
 
+
+function PresenceDot({ lastSeenAt }: { lastSeenAt?: string }) {
+  if (!lastSeenAt) return <span style={{fontSize:11,color:"#CCCCCC"}}>Never</span>
+  
+  const diff = Date.now() - new Date(lastSeenAt).getTime()
+  const mins = Math.floor(diff / 60000)
+  
+  if (mins < 5) return (
+    <div style={{display:"flex",alignItems:"center",gap:5}}>
+      <span style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",display:"inline-block",boxShadow:"0 0 0 2px rgba(34,197,94,.3)"}} />
+      <span style={{fontSize:11,color:"#22c55e",fontWeight:600}}>Online now</span>
+    </div>
+  )
+  if (mins < 30) return (
+    <div style={{display:"flex",alignItems:"center",gap:5}}>
+      <span style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b",display:"inline-block"}} />
+      <span style={{fontSize:11,color:"#f59e0b",fontWeight:600}}>{mins}m ago</span>
+    </div>
+  )
+  if (mins < 60) return <span style={{fontSize:11,color:"#AAAAAA"}}>{mins}m ago</span>
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return <span style={{fontSize:11,color:"#CCCCCC"}}>{hrs}h ago</span>
+  const days = Math.floor(hrs / 24)
+  return <span style={{fontSize:11,color:"#DDDDDD"}}>{days}d ago</span>
+}
+
 export default function AdminRetailersPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState("")
@@ -109,7 +135,7 @@ export default function AdminRetailersPage() {
 
       <div style={S.card}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr>{["Business","Contact","Terms","Credit Limit","Orders","Status","Joined","Actions"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["Business","Contact","Terms","Credit Limit","Orders","Status","Last Seen","Actions"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
           <tbody>
             {isLoading ? <tr><td colSpan={8} style={{...S.td,textAlign:"center",color:"#8888AA",padding:32}}>Loading…</td></tr>
             : retailers.length===0 ? <tr><td colSpan={8} style={{...S.td,textAlign:"center",padding:48}}>
@@ -135,7 +161,7 @@ export default function AdminRetailersPage() {
                     {r.user?.isActive?"Active":"Suspended"}
                   </span>
                 </td>
-                <td style={{...S.td,color:"#8888AA"}}>{formatDate(r.createdAt)}</td>
+                <td style={S.td}><PresenceDot lastSeenAt={r.user?.lastSeenAt} /></td>
                 <td style={S.td}>
                   <button style={{...S.btnGhost,...S.btnSm}} onClick={()=>openEdit(r)}>✏️ Edit</button>
                 </td>
