@@ -85,6 +85,7 @@ model User {
   role         UserRole   @default(RETAILER)
   isActive     Boolean    @default(true)
   lastLoginAt  DateTime?
+  lastSeenAt   DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   retailer     Retailer?
