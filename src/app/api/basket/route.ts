@@ -20,10 +20,10 @@ async function buildBasketSummary(retailerId: string) {
     productName: item.product.name,
     sku: item.product.sku,
     imageUrl: item.product.images[0]?.url ?? null,
-    unitCostPence: item.product.unitCostPence,
+    unitCostPence: item.unitCostPence ?? item.product.unitCostPence,
     cduSize: item.product.cduSize,
     quantity: item.quantity,
-    lineTotalPence: item.product.unitCostPence * item.quantity,
+    lineTotalPence: (item.unitCostPence ?? item.product.unitCostPence) * item.quantity,
   }))
 
   const subtotalPence = mapped.reduce((s, i) => s + i.lineTotalPence, 0)

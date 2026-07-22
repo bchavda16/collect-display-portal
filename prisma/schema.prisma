@@ -257,7 +257,8 @@ model SavedBasketItem {
   retailer   Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
   productId  String
   product    Product  @relation(fields: [productId], references: [id])
-  quantity   Int      @default(1)
+  quantity        Int      @default(1)
+  unitCostPence   Int?     
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

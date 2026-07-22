@@ -29,10 +29,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         where: { id: params.id },
         data: { status: "ACCEPTED", adminNote: adminNote || null, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
       }),
-      prisma.savedBasketItem.upsert({
+prisma.savedBasketItem.upsert({
         where: { retailerId_productId: { retailerId: offer.retailerId, productId: offer.productId } },
-        update: { quantity: offer.quantity },
-        create: { retailerId: offer.retailerId, productId: offer.productId, quantity: offer.quantity },
+        update: { quantity: offer.quantity, unitCostPence: agreedPrice },
+        create: { retailerId: offer.retailerId, productId: offer.productId, quantity: offer.quantity, unitCostPence: agreedPrice },
       }),
     ])
 
@@ -86,10 +86,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (action === "accept-counter") {
     await prisma.$transaction([
       prisma.productOffer.update({ where: { id: params.id }, data: { status: "ACCEPTED" } }),
-      prisma.savedBasketItem.upsert({
+prisma.savedBasketItem.upsert({
         where: { retailerId_productId: { retailerId: offer.retailerId, productId: offer.productId } },
-        update: { quantity: offer.quantity },
-        create: { retailerId: offer.retailerId, productId: offer.productId, quantity: offer.quantity },
+        update: { quantity: offer.quantity, unitCostPence: agreedPrice },
+        create: { retailerId: offer.retailerId, productId: offer.productId, quantity: offer.quantity, unitCostPence: agreedPrice },
       }),
     ])
     return NextResponse.json({ success: true })
