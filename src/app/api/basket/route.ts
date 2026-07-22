@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const retailerId = await getRetailerId((session.user as any).id)
   if (!retailerId) return NextResponse.json({ error: "Retailer not found" }, { status: 404 })
 
-  const { productId, quantity } = await req.json()
+  const { productId, quantity, unitCostPence } = await req.json()
 
   const product = await prisma.product.findUnique({ where: { id: productId }, select: { stockUnits: true } })
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 })
@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
 
   await prisma.savedBasketItem.upsert({
     where: { retailerId_productId: { retailerId, productId } },
-    update: { quantity: newQty },
-    create: { retailerId, productId, quantity: newQty },
+    update: { quantity: newQty, ...(unitCostPence !== undefined && { unitCostPence }) },
+    create: { retailerId, productId, quantity: newQty, ...(unitCostPence !== undefined && { unitCostPence }) },
   })
 
   return NextResponse.json(await buildBasketSummary(retailerId))
