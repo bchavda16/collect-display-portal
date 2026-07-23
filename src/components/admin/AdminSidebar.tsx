@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
-import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut, FileText, Tag } from 'lucide-react'
+import { LayoutDashboard, Package, ClipboardList, Building2, Upload, LogOut, FileText, Tag, Bell } from 'lucide-react'
 
 const navItems = [
   { href: '/admin/dashboard',     label: 'Dashboard',     icon: LayoutDashboard, badge: null },
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/admin/imports',       label: 'Imports',       icon: Upload,          badge: null },
   { href: '/admin/offers',        label: 'Offers',        icon: Tag,             badge: 'offers' },
   { href: '/admin/applications',  label: 'Applications',  icon: FileText,        badge: 'applications' },
+  { href: '/admin/stock-alert',     label: 'Stock Alert',    icon: Bell,            badge: null },
 ]
 
 const s = {
