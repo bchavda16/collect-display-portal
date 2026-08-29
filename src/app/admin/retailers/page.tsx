@@ -225,6 +225,14 @@ export default function AdminRetailersPage() {
 
             <div style={{display:"flex",gap:10,marginTop:8}}>
               <button style={{...S.btnRed,...S.btnSm}} onClick={()=>setDeleteConfirm(editingRetailer)}>🗑 Delete Account</button>
+              <button style={{padding:"5px 10px",fontSize:12,background:"white",color:"#D97706",border:"1px solid rgba(217,119,6,.3)",borderRadius:8,cursor:"pointer"}}
+                onClick={async()=>{
+                  const r=await fetch("/api/admin/reset-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:editingRetailer.user?.id,retailerName:editingRetailer.businessName})})
+                  const d=await r.json()
+                  alert(d.success?"Password reset and emailed to retailer":d.error??"Failed")
+                }}>
+                🔑 Reset Password
+              </button>
               <div style={{flex:1}} />
               <button style={{...S.btnGhost}} onClick={()=>setEditingRetailer(null)}>Cancel</button>
               <button style={{...S.btnPink}} onClick={handleUpdate} disabled={updateMutation.isPending}>{updateMutation.isPending?"Saving…":"Save Changes"}</button>
