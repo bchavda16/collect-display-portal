@@ -8,6 +8,7 @@ const formatCurrency = (pence: number) => new Intl.NumberFormat("en-GB", { style
 export default function AdminProductsPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState("")
+  const [asOf, setAsOf] = useState("")
   const [page, setPage] = useState(1)
   const [editStock, setEditStock] = useState<{id:string;val:string}|null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -17,6 +18,14 @@ export default function AdminProductsPage() {
   const [uploadingImg, setUploadingImg] = useState(false)
   const [imgPreview, setImgPreview] = useState<string|null>(null)
   const imgRef = useRef<HTMLInputElement>(null)
+
+  const { data: stockValue } = useQuery({
+    queryKey: ["stock-value", asOf],
+    queryFn: async () => {
+      const p = asOf ? "?asOf="+asOf : ""
+      const r = await fetch("/api/admin/stock-value"+p); return r.json()
+    },
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-products", search, page],
@@ -110,7 +119,33 @@ export default function AdminProductsPage() {
     <div style={S.wrap}>
       <div style={S.hdr}>
         <div>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20,gap:16,flexWrap:"wrap" as const}}>
+        <div>
           <h1 style={S.title}>Inventory</h1>
+          <p style={S.sub}>{data?.total ?? 0} products</p>
+        </div>
+        <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap" as const}}>
+          <div style={{background:"white",border:"1px solid rgba(0,0,0,.09)",borderRadius:12,padding:"12px 18px",minWidth:160}}>
+            <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".07em",color:"#8888AA",marginBottom:4}}>
+              {asOf ? "Stock Value on "+new Date(asOf).toLocaleDateString("en-GB") : "Current Stock Value"}
+            </div>
+            <div style={{fontSize:22,fontWeight:800,color:"#1a9da3",letterSpacing:"-.5px"}}>
+              {stockValue ? "£"+(stockValue.totalValuePence/100).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}
+            </div>
+            <div style={{fontSize:11,color:"#AAAAAA",marginTop:2}}>
+              {stockValue?.totalUnits?.toLocaleString() ?? "—"} units · {stockValue?.productCount ?? "—"} products
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".07em",color:"#8888AA",marginBottom:4}}>View as of date</div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input type="date" value={asOf} onChange={e=>setAsOf(e.target.value)} max={new Date().toISOString().split("T")[0]}
+                style={{padding:"7px 10px",border:"1.5px solid rgba(0,0,0,.12)",borderRadius:8,fontSize:13,color:"#1A1A2E",outline:"none",background:"white"}} />
+              {asOf && <button onClick={()=>setAsOf("")} style={{padding:"7px 10px",border:"1px solid rgba(0,0,0,.1)",borderRadius:8,fontSize:12,background:"white",color:"#4A4A6A",cursor:"pointer"}}>Today</button>}
+            </div>
+          </div>
+        </div>
+      </div>
           <p style={S.sub}>{data?.total ?? 0} products</p>
         </div>
         <div style={{display:"flex",gap:8}}>
