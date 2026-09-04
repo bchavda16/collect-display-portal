@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 import { Resend } from "resend"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.EMAIL_FROM ?? "orders@collectanddisplay.com"
+const FROM = process.env.EMAIL_FROM ?? "bhavik@collectanddisplay.com"
 const REPLY_TO = process.env.REPLY_TO ?? "bhavik@collectanddisplay.com"
 const PORTAL_URL = process.env.NEXTAUTH_URL ?? "https://portal.collectanddisplay.com"
 

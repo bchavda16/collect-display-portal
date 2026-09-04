@@ -42,7 +42,7 @@ export default function StockAlertPage() {
   const toggle = (id: string) => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
-    else if (next.size < 3) next.add(id)
+    else if (next.size < 6) next.add(id)
     setSelected(next)
   }
 
@@ -60,7 +60,7 @@ export default function StockAlertPage() {
   return (
     <div style={S.wrap}>
       <h1 style={S.title}>Send Stock Alert</h1>
-      <p style={S.sub}>Select up to 3 products to feature in the email, then send to all active retailers.</p>
+      <p style={S.sub}>Select up to 6 products to feature in the email, then send to all active retailers.</p>
 
       {result && (
         <div style={{background:"#EAFAF3",border:"1px solid rgba(14,165,114,.2)",borderRadius:10,padding:"14px 18px",marginBottom:20,fontSize:13}}>
@@ -80,7 +80,7 @@ export default function StockAlertPage() {
       {/* Selected summary */}
       {selected.size > 0 && (
         <div style={{background:"#f0fafb",border:"1.5px solid #88dde1",borderRadius:10,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-          <span style={{fontSize:13,fontWeight:600,color:"#1a9da3"}}>{selected.size}/3 products selected</span>
+          <span style={{fontSize:13,fontWeight:600,color:"#1a9da3"}}>{selected.size}/6 products selected</span>
           <div style={{display:"flex",gap:10}}>
             <button style={{...S.btnPink,padding:"8px 16px",fontSize:13}} onClick={()=>sendMutation.mutate()} disabled={sendMutation.isPending}>
               {sendMutation.isPending?"Sending…":`Send to all retailers →`}

@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma"
 import { Resend } from "resend"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.EMAIL_FROM ?? "orders@collectanddisplay.com"
+const FROM = process.env.EMAIL_FROM ?? "bhavik@collectanddisplay.com"
 const REPLY_TO = process.env.REPLY_TO ?? "bhavik@collectanddisplay.com"
 const PORTAL_URL = process.env.NEXTAUTH_URL ?? "https://portal.collectanddisplay.com"
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const fmt = (p: number) => `£${(p / 100).toFixed(2)}`
 
-  const productCards = products.map(p => {
+  const productCards = products.map((p, idx) => {
     const imgUrl = p.images?.[0]?.url
     return `
       <td style="width:33%;padding:0 5px;vertical-align:top">
