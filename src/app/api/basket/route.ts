@@ -87,12 +87,23 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(await buildBasketSummary(retailerId))
 }
 
-export async function DELETE(_req: NextRequest) {
+export async function DELETE(req: NextRequest) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 })
   const retailerId = await getRetailerId((session.user as any).id)
   if (!retailerId) return NextResponse.json({ error: "Retailer not found" }, { status: 404 })
 
-  await prisma.savedBasketItem.deleteMany({ where: { retailerId } })
+  let itemId: string | undefined
+  let clearAll = false
+  try {
+    const body = await req.json()
+    itemId = body.itemId
+    clearAll = body.clearAll ?? false
+  } catch { clearAll = true }
+
+  if (itemId) {
+    await prisma.savedBasketItem.deleteMany({ where: { id: itemId, retailerId } })
+  } else {
+    await prisma.savedBasketItem.deleteMany({ where: { retailerId } })
   return NextResponse.json({ items: [], subtotalPence: 0, vatPence: 0, totalPence: 0 })
 }

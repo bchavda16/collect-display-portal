@@ -13,6 +13,10 @@ function LoginForm() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [forgotSent, setForgotSent] = useState(false)
+  const [forgotLoading, setForgotLoading] = useState(false)
   const [error, setError] = useState("")
   const [regForm, setRegForm] = useState({businessName:"",contactName:"",email:"",phone:""})
   const [regSubmitting, setRegSubmitting] = useState(false)
@@ -26,6 +30,14 @@ function LoginForm() {
     setLoading(false)
     if (res?.error) { setError("Invalid email or password") }
     else { router.push(callbackUrl) }
+  }
+
+  const handleForgot = async () => {
+    if (!forgotEmail) return
+    setForgotLoading(true)
+    await fetch("/api/auth/forgot-password", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ email: forgotEmail }) })
+    setForgotLoading(false)
+    setForgotSent(true)
   }
 
   const handleRegister = async () => {

@@ -29,7 +29,7 @@ export function BasketDrawer() {
   })
 
   const clearMutation = useMutation({
-    mutationFn: async () => { const r = await fetch("/api/basket", {method:"DELETE"}); return r.json() },
+    mutationFn: async (itemId?: string) => { const r = await fetch("/api/basket", {method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify(itemId ? {itemId} : {clearAll:true})}); return r.json() },
     onSuccess: () => qc.invalidateQueries({queryKey:["basket"]}),
   })
 
@@ -67,7 +67,7 @@ export function BasketDrawer() {
           {items.length>0&&<span style={{fontSize:12,color:"#8888AA",marginLeft:8}}>({items.length} line{items.length!==1?"s":""})</span>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {items.length>0&&<button className="clear-btn" onClick={()=>clearMutation.mutate()}>Clear all</button>}
+          {items.length>0&&<button className="clear-btn" onClick={()=>clearMutation.mutate(item.id)}>Clear all</button>}
           <button className="close-btn" onClick={()=>setOpen(false)}>×</button>
         </div>
       </div>
