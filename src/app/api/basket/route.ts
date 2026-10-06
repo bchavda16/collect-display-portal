@@ -94,16 +94,16 @@ export async function DELETE(req: NextRequest) {
   if (!retailerId) return NextResponse.json({ error: "Retailer not found" }, { status: 404 })
 
   let itemId: string | undefined
-  let clearAll = false
   try {
     const body = await req.json()
     itemId = body.itemId
-    clearAll = body.clearAll ?? false
-  } catch { clearAll = true }
+  } catch { itemId = undefined }
 
   if (itemId) {
     await prisma.savedBasketItem.deleteMany({ where: { id: itemId, retailerId } })
   } else {
     await prisma.savedBasketItem.deleteMany({ where: { retailerId } })
-  return NextResponse.json({ items: [], subtotalPence: 0, vatPence: 0, totalPence: 0 })
+  }
+
+  return NextResponse.json(await buildBasketSummary(retailerId))
 }

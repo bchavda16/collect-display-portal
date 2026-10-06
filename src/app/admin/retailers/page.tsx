@@ -124,7 +124,10 @@ export default function AdminRetailersPage() {
     <div style={S.wrap}>
       <div style={S.hdr}>
         <div><h1 style={S.title}>Retailers</h1><p style={S.sub}>{data?.total??0} accounts</p></div>
-        <button style={S.btnPink} onClick={()=>setShowCreate(true)}>+ Add Retailer</button>
+        <div style={{display:"flex",gap:8}}>
+          <a href="/api/admin/retailers/export" download style={{...S.btnGhost,textDecoration:"none"}}>⬇ Export CSV</a>
+          <button style={S.btnPink} onClick={()=>setShowCreate(true)}>+ Add Retailer</button>
+        </div>
       </div>
 
       <div style={S.searchBox}>

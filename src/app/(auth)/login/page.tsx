@@ -125,6 +125,24 @@ function LoginForm() {
                 style={{width:"100%",padding:12,background:"#88dde1",color:"#0a1420",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",letterSpacing:".02em",transition:"background .15s"}}>
                 {loading?"Signing in…":"Sign in"}
               </button>
+                <div style={{textAlign:"center" as const,marginTop:14}}>
+                  {!showForgot ? (
+                    <button onClick={()=>setShowForgot(true)} style={{background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,.4)",fontSize:12,padding:0,textDecoration:"underline"}}>Forgot your password?</button>
+                  ) : forgotSent ? (
+                    <div style={{background:"rgba(136,221,225,.1)",border:"1px solid rgba(136,221,225,.3)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#88dde1"}}>
+                      ✓ Check your inbox — a temporary password has been sent if that email is registered.
+                    </div>
+                  ) : (
+                    <div>
+                      <p style={{fontSize:12,color:"rgba(255,255,255,.4)",margin:"0 0 8px"}}>Enter your email and we'll send a temporary password.</p>
+                      <div style={{display:"flex",gap:6}}>
+                        <input className="fi" type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleForgot()} placeholder="your@email.com" style={{flex:1,padding:"9px 12px",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:8,fontSize:13,color:"white",background:"rgba(255,255,255,.08)",fontFamily:"inherit",outline:"none"}} />
+                        <button onClick={handleForgot} disabled={forgotLoading} style={{padding:"9px 14px",background:"#88dde1",color:"#0a1420",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>{forgotLoading?"…":"Send"}</button>
+                      </div>
+                      <button onClick={()=>{setShowForgot(false);setForgotEmail("")}} style={{background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,.3)",fontSize:11,padding:"6px 0 0",marginTop:4}}>← Back</button>
+                    </div>
+                  )}
+                </div>
             </div>
           ) : regSuccess ? (
             <div style={{background:"rgba(14,165,114,.12)",border:"1px solid rgba(14,165,114,.25)",borderRadius:12,padding:20,fontSize:13,color:"#4ade80",textAlign:"center" as const}}>
