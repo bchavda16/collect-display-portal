@@ -171,7 +171,7 @@ export default function StockPage() {
           <p style={{fontSize:13,color:"#8888AA",margin:0}}>Try adjusting your search or filters</p>
         </div>
       ) : (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:24}}>
           {products.map((p:any)=>{
             const qty=getQty(p), max=maxQty(p), isAdded=added[p.id]
             const unavailable=p.status==="OUT_OF_STOCK"||p.stockUnits===0

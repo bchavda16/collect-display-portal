@@ -49,7 +49,7 @@ export default function CheckoutPage() {
   if (success) {
     return (
       <>
-      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.success-icon{font-size:64px;margin-bottom:16px}.success-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px}.success-sub{font-size:14px;color:#8888AA;margin:0 0 32px}.btn-pink{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;margin:0 6px}.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;margin:0 6px}`}</style>
+      <style>{`@media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.success-icon{font-size:64px;margin-bottom:16px}.success-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px}.success-sub{font-size:14px;color:#8888AA;margin:0 0 32px}.btn-pink{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;margin:0 6px}.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;margin:0 6px}`}</style>
       <div className="checkout-page">
         <div className="success-icon">🎉</div>
         <h1 className="success-title">Order placed!</h1>
@@ -63,7 +63,7 @@ export default function CheckoutPage() {
   if (account && !account.hasAddress) {
     return (
       <>
-      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
+      <style>{`@media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
       <div className="checkout-page">
         <div style={{fontSize:48,marginBottom:16}}>📋</div>
         <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Complete your profile first</h1>
@@ -77,7 +77,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <>
-      <style>{`.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
+      <style>{`@media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
       <div className="checkout-page">
         <div style={{fontSize:48,marginBottom:16}}>🛒</div>
         <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Your basket is empty</h1>
@@ -92,7 +92,7 @@ export default function CheckoutPage() {
     <>
     <style>{`
       body{font-family:system-ui,sans-serif}
-      .checkout-page{padding:24px;max-width:900px}
+      @media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;max-width:900px}
       .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 24px}
       .checkout-grid{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
       .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
