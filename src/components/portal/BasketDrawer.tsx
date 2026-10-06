@@ -1,12 +1,14 @@
 "use client"
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { formatCurrency } from "@/lib/utils"
+import { useRouter } from "next/navigation"
+
+const fmt = (p: number) => new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(p/100)
 
 export function BasketDrawer() {
   const [open, setOpen] = useState(false)
   const qc = useQueryClient()
+  const router = useRouter()
 
   useEffect(() => {
     const handler = () => setOpen(true)
@@ -14,23 +16,33 @@ export function BasketDrawer() {
     return () => window.removeEventListener("open-basket", handler)
   }, [])
 
-  const { data: basket, isLoading } = useQuery({
+  const { data: basket } = useQuery({
     queryKey: ["basket"],
     queryFn: async () => { const r = await fetch("/api/basket"); return r.json() },
-    enabled: open,
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ itemId, quantity }: any) => {
-      const r = await fetch("/api/basket", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({itemId,quantity}) })
+  const removeMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const r = await fetch("/api/basket", {
+        method: "DELETE",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ itemId })
+      })
       return r.json()
     },
-    onSuccess: () => qc.invalidateQueries({queryKey:["basket"]}),
+    onSuccess: (data) => { qc.setQueryData(["basket"], data) },
   })
 
   const clearMutation = useMutation({
-    mutationFn: async (itemId?: string) => { const r = await fetch("/api/basket", {method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify(itemId ? {itemId} : {clearAll:true})}); return r.json() },
-    onSuccess: () => qc.invalidateQueries({queryKey:["basket"]}),
+    mutationFn: async () => {
+      const r = await fetch("/api/basket", {
+        method: "DELETE",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ clearAll: true })
+      })
+      return r.json()
+    },
+    onSuccess: (data) => { qc.setQueryData(["basket"], data) },
   })
 
   const items = basket?.items ?? []
@@ -43,66 +55,78 @@ export function BasketDrawer() {
   return (
     <>
     <style>{`
-      .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.1);max-height:100vh;overflow:hidden}
-      .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08)}
-      .drawer-body{flex:1;overflow-y:auto;padding:16px;max-height:calc(100vh - 140px)}
-      .drawer-footer{border-top:1px solid rgba(0,0,0,.08);padding:16px}
-      .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:49}
-      .basket-item{display:flex;gap:12px;padding:12px;background:#FAFBFC;border:1px solid rgba(0,0,0,.07);border-radius:10px;margin-bottom:8px}
-      .stepper{display:flex;align-items:center;border:1px solid rgba(0,0,0,.12);border-radius:6px;overflow:hidden}
-      .stepper button{background:#F4F5F7;border:none;padding:4px 8px;font-size:14px;cursor:pointer;color:#4A4A6A}
-      .stepper span{font-size:12px;font-weight:600;padding:0 6px;color:#1A1A2E;min-width:26px;text-align:center}
-      .checkout-btn{display:block;width:100%;padding:12px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-top:12px}
+      .drawer{position:fixed;inset-y:0;right:0;width:380px;background:white;border-left:1px solid rgba(0,0,0,.09);z-index:50;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.1);max-height:100vh}
+      .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:49;backdrop-filter:blur(2px)}
+      .drawer-header{padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:white}
+      .drawer-body{flex:1;overflow-y:auto;padding:12px}
+      .drawer-footer{padding:16px 20px;border-top:1px solid rgba(0,0,0,.08);flex-shrink:0;background:white}
+      .basket-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafb;border-radius:10px;margin-bottom:8px}
+      .item-img{width:52px;height:52px;border-radius:8px;background:#e6f9fa;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+      .item-img img{width:100%;height:100%;object-fit:contain}
+      .remove-btn{width:28px;height:28px;border-radius:99px;background:#fff1f4;border:none;color:#e11d48;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-weight:700;line-height:1}
+      .remove-btn:hover{background:#ffd6de}
+      .checkout-btn{width:100%;padding:13px;background:#88dde1;color:#0a1420;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
       .checkout-btn:hover{background:#5ecfd4}
-      .close-btn{background:none;border:none;cursor:pointer;color:#8888AA;font-size:20px;padding:0}
-      .clear-btn{background:none;border:none;cursor:pointer;color:#8888AA;font-size:12px;text-decoration:underline;padding:0}
-      .summary-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
-      .summary-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#1a9da3;border-top:1px solid rgba(0,0,0,.08);padding-top:10px;margin-top:6px}
+      .clear-btn{background:none;border:none;cursor:pointer;color:#e11d48;font-size:12px;font-weight:600;padding:0}
+      .clear-btn:hover{text-decoration:underline}
+      @media(max-width:768px){
+        .drawer{width:100%;left:0;right:0;top:auto;bottom:0;height:90vh;border-radius:20px 20px 0 0;border-left:none;border-top:1px solid rgba(0,0,0,.09)}
+      }
     `}</style>
-    <div className="backdrop" onClick={()=>setOpen(false)} />
+
+    <div className="drawer-overlay" onClick={()=>setOpen(false)} />
     <div className="drawer">
       <div className="drawer-header">
-        <div>
-          <span style={{fontWeight:700,fontSize:15,color:"#1A1A2E"}}>🛒 Basket</span>
-          {items.length>0&&<span style={{fontSize:12,color:"#8888AA",marginLeft:8}}>({items.length} line{items.length!==1?"s":""})</span>}
+        <div style={{fontFamily:"system-ui,sans-serif"}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#0d1117"}}>Basket</div>
+          <div style={{fontSize:12,color:"#8888AA"}}>{items.length} item{items.length!==1?"s":""}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {items.length>0&&<button className="clear-btn" onClick={()=>clearMutation.mutate(item.id)}>Clear all</button>}
-          <button className="close-btn" onClick={()=>setOpen(false)}>×</button>
+          {items.length > 0 && (
+            <button className="clear-btn" onClick={()=>clearMutation.mutate()} disabled={clearMutation.isPending}>
+              {clearMutation.isPending ? "Clearing…" : "Clear all"}
+            </button>
+          )}
+          <button onClick={()=>setOpen(false)} style={{background:"#f4f4f4",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:18,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui"}}>×</button>
         </div>
       </div>
+
       <div className="drawer-body">
-        {isLoading ? <p style={{color:"#8888AA",fontSize:13,textAlign:"center",paddingTop:32}}>Loading…</p>
-        : items.length===0 ? (
-          <div style={{textAlign:"center",paddingTop:48}}>
+        {items.length === 0 ? (
+          <div style={{textAlign:"center",padding:"48px 16px",fontFamily:"system-ui,sans-serif"}}>
             <div style={{fontSize:40,marginBottom:12}}>🛒</div>
-            <p style={{fontWeight:600,color:"#1A1A2E",margin:"0 0 4px"}}>Your basket is empty</p>
-            <p style={{fontSize:13,color:"#8888AA",margin:0}}>Add items from Live Stock</p>
+            <div style={{fontWeight:600,color:"#0d1117",marginBottom:4}}>Your basket is empty</div>
+            <div style={{fontSize:13,color:"#8888AA"}}>Add products from the stock page</div>
           </div>
         ) : items.map((item: any) => (
           <div key={item.id} className="basket-item">
-            
-            <div style={{flex:1,minWidth:0}}>
-              <p style={{fontSize:12,fontWeight:600,color:"#1A1A2E",margin:"0 0 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</p>
-              <p style={{fontSize:11,color:"#8888AA",fontFamily:"monospace",margin:"0 0 6px"}}>{item.sku}</p>
-              <p style={{fontSize:12,fontWeight:600,color:"#1a9da3",margin:0}}>{formatCurrency(item.lineTotalPence)}</p>
+            <div className="item-img">
+              {item.imageUrl ? <img src={item.imageUrl} alt={item.productName} /> : <span style={{fontSize:22}}>🎁</span>}
             </div>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
-              <div className="stepper">
-                <button onClick={()=>updateMutation.mutate({itemId:item.id,quantity:item.quantity-item.cduSize})}>−</button>
-                <span>{item.quantity}</span>
-                <button onClick={()=>updateMutation.mutate({itemId:item.id,quantity:item.quantity+item.cduSize})}>+</button>
-              </div>
+            <div style={{flex:1,minWidth:0,fontFamily:"system-ui,sans-serif"}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#0d1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</div>
+              <div style={{fontSize:11,color:"#8888AA",marginTop:2}}>×{item.quantity} units · CDU {item.cduSize}</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#1a9da3",marginTop:3}}>{fmt(item.lineTotalPence)}</div>
             </div>
+            <button className="remove-btn" onClick={()=>removeMutation.mutate(item.id)} disabled={removeMutation.isPending} aria-label="Remove item">×</button>
           </div>
         ))}
       </div>
-      {items.length>0&&(
-        <div className="drawer-footer">
-          <div className="summary-row"><span style={{color:"#8888AA"}}>Subtotal (ex. VAT)</span><span style={{fontWeight:500}}>{formatCurrency(subtotal)}</span></div>
-          <div className="summary-row"><span style={{color:"#8888AA"}}>VAT (20%)</span><span style={{color:"#8888AA"}}>{formatCurrency(vat)}</span></div>
-          <div className="summary-total"><span>Total (inc. VAT)</span><span>{formatCurrency(total)}</span></div>
-          <Link href="/checkout" className="checkout-btn" onClick={()=>setOpen(false)}>Proceed to Checkout →</Link>
+
+      {items.length > 0 && (
+        <div className="drawer-footer" style={{fontFamily:"system-ui,sans-serif"}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#8888AA",marginBottom:4}}>
+            <span>Subtotal (ex. VAT)</span><span>{fmt(subtotal)}</span>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#8888AA",marginBottom:10}}>
+            <span>VAT (20%)</span><span>{fmt(vat)}</span>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,color:"#0d1117",marginBottom:14}}>
+            <span>Total</span><span style={{color:"#1a9da3"}}>{fmt(total)}</span>
+          </div>
+          <button className="checkout-btn" onClick={()=>{setOpen(false);router.push("/checkout")}}>
+            Proceed to checkout →
+          </button>
         </div>
       )}
     </div>
