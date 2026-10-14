@@ -358,7 +358,16 @@ export default function AdminOrdersPage() {
                             <div>
                               <p style={{fontSize:11,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".07em",color:"#8888AA",margin:"0 0 10px"}}>Order Info</p>
                               <div style={{background:"white",border:"1px solid rgba(0,0,0,.08)",borderRadius:10,padding:"12px 14px"}}>
-                                {[
+                                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:4}}>
+                                  <span style={{fontSize:13,color:"#8888AA"}}>Invoiced</span>
+                                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                                    <input type="checkbox" checked={orderDetail.invoiced??false}
+                                      onChange={e=>invoicedMutation.mutate({orderId:o.id,invoiced:e.target.checked})}
+                                      style={{width:16,height:16,accentColor:"#88dde1",cursor:"pointer"}} />
+                                    <span style={{fontSize:12,fontWeight:600,color:orderDetail.invoiced?"#0EA572":"#D97706"}}>{orderDetail.invoiced?"Invoiced":"Pending invoice"}</span>
+                                  </label>
+                                </div>
+                            {[
                                   ["Retailer",orderDetail.retailer?.businessName],
                                   ["Placed",formatDateTime(orderDetail.createdAt)],
                                   ["PO Ref",orderDetail.poReference??"—"],
