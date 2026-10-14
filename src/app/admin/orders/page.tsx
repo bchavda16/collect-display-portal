@@ -136,7 +136,17 @@ export default function AdminOrdersPage() {
       const r = await fetch("/api/orders/invoiced", { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ orderId, invoiced }) })
       return r.json()
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-orders"]}) },
+    onMutate: async ({ orderId, invoiced }: any) => {
+      await qc.cancelQueries({queryKey:["admin-orders"]})
+      const prev = qc.getQueryData(["admin-orders", status, page])
+      qc.setQueryData(["admin-orders", status, page], (old: any) => ({
+        ...old,
+        data: old?.data?.map((o: any) => o.id === orderId ? {...o, invoiced} : o)
+      }))
+      return { prev }
+    },
+    onError: (_e: any, _v: any, ctx: any) => { if (ctx?.prev) qc.setQueryData(["admin-orders", status, page], ctx.prev) },
+    onSettled: () => { qc.invalidateQueries({queryKey:["admin-orders"]}) },
   })
 
   const orders = data?.data ?? []
@@ -275,10 +285,18 @@ export default function AdminOrdersPage() {
                     </span>
                   </td>
                   <td style={{...S.td,textAlign:"center" as const}}>
-                    <input type="checkbox" checked={o.invoiced ?? false}
-                      onChange={e=>invoicedMutation.mutate({orderId:o.id,invoiced:e.target.checked})}
-                      style={{width:16,height:16,cursor:"pointer",accentColor:"#88dde1"}}
-                      title={o.invoiced?"Invoiced":"Not invoiced yet"} />
+                    <button
+                      onClick={()=>invoicedMutation.mutate({orderId:o.id,invoiced:!o.invoiced})}
+                      style={{
+                        display:"inline-flex",alignItems:"center",gap:5,
+                        padding:"4px 10px",borderRadius:99,
+                        fontSize:11,fontWeight:600,cursor:"pointer",border:"none",
+                        background:o.invoiced?"#EAFAF3":"#F4F5F7",
+                        color:o.invoiced?"#0EA572":"#8888AA",
+                        transition:"all .15s",whiteSpace:"nowrap" as const,
+                      }}>
+                      {o.invoiced ? "✓ Invoiced" : "Invoice"}
+                    </button>
                   </td>
                   <td style={S.td}>
                     <button style={{...S.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>{setEditing(o);setNewStatus(o.status);setTracking(o.trackingNumber??"");setCarrier(o.carrierName??"");setNote("")}}>
