@@ -1,18 +1,20 @@
 "use client"
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { formatCurrency } from "@/lib/utils"
 import Link from "next/link"
+
+const fmt = (p: number) => new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(p/100)
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const qc = useQueryClient()
   const [poRef, setPoRef] = useState("")
-  const [deliveryDate, setDeliveryDate] = useState("")
   const [notes, setNotes] = useState("")
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState<string|null>(null)
+  const [loading, setLoading] = useState(false)
+  const [removing, setRemoving] = useState<string|null>(null)
+  const [clearing, setClearing] = useState(false)
 
   const { data: account } = useQuery({
     queryKey: ["account"],
@@ -29,140 +31,136 @@ export default function CheckoutPage() {
   const vat = basket?.vatPence ?? 0
   const total = basket?.totalPence ?? 0
 
-  const handleSubmit = async () => {
-    if (!poRef.trim()) { setError("PO Reference is required"); return }
-    setLoading(true); setError("")
-    const r = await fetch("/api/orders", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ poReference: poRef, requestedDeliveryDate: deliveryDate || undefined, deliveryNotes: notes || undefined })
-    })
+  const removeItem = async (itemId: string) => {
+    setRemoving(itemId)
+    const r = await fetch("/api/basket", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ itemId }) })
     const d = await r.json()
-    setLoading(false)
-    if (d.success) {
-      setSuccess(d.data.orderNumber)
-    } else {
-      setError(d.error ?? "Failed to place order")
-    }
+    qc.setQueryData(["basket"], d)
+    setRemoving(null)
   }
 
-  if (success) {
-    return (
-      <>
-      <style>{`@media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.success-icon{font-size:64px;margin-bottom:16px}.success-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px}.success-sub{font-size:14px;color:#8888AA;margin:0 0 32px}.btn-pink{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;margin:0 6px}.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:white;color:#4A4A6A;border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;margin:0 6px}`}</style>
-      <div className="checkout-page">
-        <div className="success-icon">🎉</div>
-        <h1 className="success-title">Order placed!</h1>
-        <p className="success-sub">{success} has been submitted successfully. You will receive a confirmation email shortly.</p>
-        <div><Link href="/orders" className="btn-pink">View my orders</Link><Link href="/stock" className="btn-ghost">Continue shopping</Link></div>
-      </div>
-      </>
-    )
+  const clearBasket = async () => {
+    setClearing(true)
+    const r = await fetch("/api/basket", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ clearAll: true }) })
+    const d = await r.json()
+    qc.setQueryData(["basket"], d)
+    setClearing(false)
+  }
+
+  const handleOrder = async () => {
+    if (!poRef.trim()) { setError("PO Reference is required"); return }
+    setLoading(true); setError("")
+    const r = await fetch("/api/orders", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ poReference: poRef, deliveryNotes: notes || undefined }) })
+    const d = await r.json()
+    setLoading(false)
+    if (d.error) { setError(d.error); return }
+    qc.invalidateQueries({queryKey:["basket"]})
+    router.push("/orders/" + d.data?.id)
   }
 
   if (account && !account.hasAddress) {
     return (
-      <>
-      <style>{`@media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
-      <div className="checkout-page">
+      <div style={{padding:24,fontFamily:"'Inter',system-ui",textAlign:"center",paddingTop:80}}>
         <div style={{fontSize:48,marginBottom:16}}>📋</div>
-        <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Complete your profile first</h1>
-        <p style={{fontSize:13,color:"#8888AA",marginBottom:24}}>We need your delivery address before you can place an order.</p>
-        <a href="/account" className="btn-pink">Go to Account Settings →</a>
+        <h2 style={{fontSize:20,fontWeight:700,color:"#1c1c1e",margin:"0 0 8px"}}>Add delivery address first</h2>
+        <p style={{fontSize:14,color:"#8e8e93",margin:"0 0 24px"}}>We need your delivery address before you can place an order.</p>
+        <Link href="/account" style={{display:"inline-block",padding:"13px 28px",background:"#88dde1",color:"white",borderRadius:14,fontSize:15,fontWeight:600,textDecoration:"none"}}>Go to account settings</Link>
       </div>
-      </>
     )
   }
 
   if (items.length === 0) {
     return (
-      <>
-      <style>{`@media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;text-align:center;padding-top:80px}.btn-pink{display:inline-flex;padding:10px 20px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}`}</style>
-      <div className="checkout-page">
+      <div style={{padding:24,fontFamily:"'Inter',system-ui",textAlign:"center",paddingTop:80}}>
         <div style={{fontSize:48,marginBottom:16}}>🛒</div>
-        <h1 style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:8}}>Your basket is empty</h1>
-        <p style={{fontSize:13,color:"#8888AA",marginBottom:24}}>Add some products before checking out</p>
-        <Link href="/stock" className="btn-pink">Browse stock</Link>
+        <h2 style={{fontSize:20,fontWeight:700,color:"#1c1c1e",margin:"0 0 8px"}}>Your basket is empty</h2>
+        <p style={{fontSize:14,color:"#8e8e93",margin:"0 0 24px"}}>Add products from the stock page to get started.</p>
+        <Link href="/stock" style={{display:"inline-block",padding:"13px 28px",background:"#88dde1",color:"white",borderRadius:14,fontSize:15,fontWeight:600,textDecoration:"none"}}>Browse stock</Link>
       </div>
-      </>
     )
   }
 
   return (
     <>
     <style>{`
-      body{font-family:system-ui,sans-serif}
-      @media(max-width:768px){.checkout-grid{grid-template-columns:1fr !important}.checkout-two-col{flex-direction:column !important}}.checkout-page{padding:24px;max-width:900px}
-      .page-title{font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 24px}
-      .checkout-grid{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
-      .card{background:white;border:1px solid rgba(0,0,0,.09);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-      .card-head{padding:14px 20px;border-bottom:1px solid rgba(0,0,0,.07);font-size:14px;font-weight:600;color:#1A1A2E}
-      .card-body{padding:20px}
-      .form-group{margin-bottom:18px}
-      .form-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4A4A6A;margin-bottom:7px}
-      .form-input{width:100%;padding:11px 14px;border:1.5px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;color:#1A1A2E;outline:none;box-sizing:border-box;background:white;transition:border-color .15s}
-      .form-input:focus{border-color:#88dde1;box-shadow:0 0 0 3px rgba(136,221,225,.15)}
-      .form-hint{font-size:11px;color:#8888AA;margin-top:5px}
-      .submit-btn{width:100%;padding:14px;background:#88dde1;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
-      .submit-btn:hover{background:#5ecfd4}
-      .submit-btn:disabled{opacity:.6;cursor:not-allowed}
-      .error-box{background:#FFF1F4;border:1px solid rgba(225,29,72,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#E11D48;margin-bottom:16px}
-      .line-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06)}
-      .line-item:last-child{border-bottom:none}
-      .line-name{font-size:13px;font-weight:500;color:#1A1A2E;margin:0 0 2px}
-      .line-meta{font-size:11px;color:#8888AA;margin:0}
-      .line-price{font-size:13px;font-weight:600;color:#1A1A2E;flex-shrink:0}
-      .totals-row{display:flex;justify-content:space-between;font-size:13px;color:#8888AA;padding:5px 0}
-      .totals-final{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#1a9da3;padding-top:10px;border-top:1.5px solid rgba(0,0,0,.08);margin-top:6px}
+      .co{padding:16px;font-family:'Inter',system-ui,sans-serif;background:#f2f2f7;min-height:100vh;max-width:640px;margin:0 auto}
+      .co h1{font-size:22px;font-weight:800;color:#1c1c1e;margin:0 0 20px;letter-spacing:-.5px}
+      .co-section{background:white;border-radius:16px;overflow:hidden;margin-bottom:16px}
+      .co-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f2f2f7}
+      .co-row:last-child{border-bottom:none}
+      .co-item-img{width:44px;height:44px;border-radius:8px;background:#f2f2f7;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+      .co-item-img img{width:100%;height:100%;object-fit:contain}
+      .co-label{font-size:13px;font-weight:600;color:#8e8e93;padding:12px 16px 6px}
+      .co-input{width:100%;padding:13px 16px;border:none;border-bottom:1px solid #f2f2f7;font-size:16px;color:#1c1c1e;background:transparent;outline:none;font-family:inherit}
+      .co-input:last-child{border-bottom:none}
+      .co-input::placeholder{color:#c7c7cc}
+      .co-total-row{display:flex;justify-content:space-between;padding:10px 16px;font-size:14px;color:#8e8e93;border-bottom:1px solid #f2f2f7}
+      .co-total-final{display:flex;justify-content:space-between;padding:12px 16px;font-size:17px;font-weight:700;color:#1c1c1e}
+      .co-btn{width:100%;padding:16px;background:#88dde1;color:white;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+      .co-btn:active{background:#0062cc}
+      .co-btn:disabled{opacity:.4;cursor:not-allowed}
+      .co-err{background:#fff2f2;border:1px solid #ffcdd2;border-radius:12px;padding:12px 16px;font-size:13px;color:#d32f2f;margin-bottom:16px}
     `}</style>
-    <div className="checkout-page">
-      <h1 className="page-title">Checkout</h1>
-      <div className="checkout-grid">
-        <div className="card">
-          <div className="card-head">Order Details</div>
-          <div className="card-body">
-            <div className="form-group">
-              <label className="form-label">PO Reference *</label>
-              <input className="form-input" value={poRef} onChange={e=>setPoRef(e.target.value)} placeholder="e.g. PO-2026-001" />
-              <p className="form-hint">Your internal purchase order number</p>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Requested Delivery Date</label>
-              <input className="form-input" type="date" value={deliveryDate} onChange={e=>setDeliveryDate(e.target.value)} />
-              <p className="form-hint">We will do our best to meet your preferred date</p>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Delivery Notes</label>
-              <textarea className="form-input" rows={3} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Special delivery instructions, access notes…" style={{resize:"none"}} />
-            </div>
-            {error && <div className="error-box">{error}</div>}
-            <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
-              {loading ? "Placing order…" : "Place Order · "+formatCurrency(total)}
-            </button>
-            <p style={{fontSize:11,color:"#8888AA",textAlign:"center",marginTop:12}}>By placing this order you agree to our <a href="#" style={{color:"#88dde1"}}>terms of trade</a>.</p>
-          </div>
-        </div>
+    <div className="co">
+      <h1>Checkout</h1>
 
-        <div className="card">
-          <div className="card-head">Summary ({items.length} {items.length===1?"line":"lines"})</div>
-          <div className="card-body" style={{paddingBottom:0}}>
-            {items.map((item: any) => (
-              <div key={item.id} className="line-item">
-                <div style={{minWidth:0}}>
-                  <p className="line-name">{item.productName}</p>
-                  <p className="line-meta">×{item.quantity} units</p>
-                </div>
-                <span className="line-price">{formatCurrency(item.lineTotalPence)}</span>
-              </div>
-            ))}
+      {/* Order items */}
+      <div className="co-section">
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px 8px"}}>
+          <span style={{fontSize:13,fontWeight:600,color:"#8e8e93"}}>Order summary</span>
+          <button onClick={clearBasket} disabled={clearing} style={{background:"none",border:"none",cursor:"pointer",color:"#e11d48",fontSize:13,fontWeight:600,padding:0,fontFamily:"inherit"}}>{clearing?"Clearing…":"Clear all"}</button>
+        </div>
+        {items.map((item: any) => (
+          <div key={item.id} className="co-row">
+            <div className="co-item-img">
+              {item.imageUrl ? <img src={item.imageUrl} alt={item.productName} /> : <span style={{fontSize:20}}>🎁</span>}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#1c1c1e",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.productName}</div>
+              <div style={{fontSize:12,color:"#8e8e93"}}>×{item.quantity} units</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+              <div style={{fontSize:14,fontWeight:600,color:"#1c1c1e"}}>{fmt(item.lineTotalPence)}</div>
+              <button onClick={()=>removeItem(item.id)} disabled={removing===item.id}
+                style={{width:28,height:28,borderRadius:"50%",background:"#fff1f4",border:"none",color:"#e11d48",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,flexShrink:0}}>
+                {removing===item.id?"…":"×"}
+              </button>
+            </div>
           </div>
-          <div style={{padding:"14px 20px"}}>
-            <div className="totals-row"><span>Subtotal (ex. VAT)</span><span>{formatCurrency(subtotal)}</span></div>
-            <div className="totals-row"><span>VAT (20%)</span><span>{formatCurrency(vat)}</span></div>
-            <div className="totals-final"><span>Total</span><span>{formatCurrency(total)}</span></div>
+        ))}
+        <div className="co-total-row"><span>Subtotal (ex. VAT)</span><span>{fmt(subtotal)}</span></div>
+        <div className="co-total-row"><span>VAT (20%)</span><span>{fmt(vat)}</span></div>
+        <div className="co-total-final"><span>Total</span><span style={{color:"#88dde1"}}>{fmt(total)}</span></div>
+      </div>
+
+      {/* Order details */}
+      <div className="co-section">
+        <div className="co-label">Order details</div>
+        <input className="co-input" placeholder="PO Reference (required)" value={poRef} onChange={e=>setPoRef(e.target.value)} />
+        <input className="co-input" placeholder="Delivery notes (optional)" value={notes} onChange={e=>setNotes(e.target.value)} />
+      </div>
+
+      {/* Delivery address */}
+      {account?.addresses?.[0] && (
+        <div className="co-section">
+          <div className="co-label">Delivering to</div>
+          <div style={{padding:"10px 16px 14px",fontSize:13,color:"#1c1c1e",lineHeight:1.7}}>
+            {account.addresses[0].line1}<br/>
+            {account.addresses[0].line2 && <>{account.addresses[0].line2}<br/></>}
+            {account.addresses[0].city}, {account.addresses[0].postcode}
           </div>
         </div>
-      </div>
+      )}
+
+      {error && <div className="co-err">{error}</div>}
+
+      <button className="co-btn" onClick={handleOrder} disabled={loading}>
+        {loading ? "Placing order…" : `Place order · ${fmt(total)}`}
+      </button>
+
+      <p style={{textAlign:"center",fontSize:12,color:"#8e8e93",marginTop:12}}>
+        By placing this order you agree to our trading terms.
+      </p>
     </div>
     </>
   )

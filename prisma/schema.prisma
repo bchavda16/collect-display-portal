@@ -214,6 +214,7 @@ model Order {
   invoicePath           String?
   invoiceNumber         String?
   isRead                Boolean              @default(false)
+  invoiced              Boolean              @default(false)
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
 

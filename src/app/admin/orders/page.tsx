@@ -131,6 +131,14 @@ export default function AdminOrdersPage() {
   const createSubtotal = createItems.reduce((s,i) => s + i.unitCostPence * i.quantity, 0)
   const createTotal = Math.round(createSubtotal * 1.2)
 
+  const invoicedMutation = useMutation({
+    mutationFn: async ({ orderId, invoiced }: any) => {
+      const r = await fetch("/api/orders/invoiced", { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ orderId, invoiced }) })
+      return r.json()
+    },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["admin-orders"]}) },
+  })
+
   const orders = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const allSelected = orders.length > 0 && orders.every((o: any) => selected.has(o.id))
@@ -265,6 +273,12 @@ export default function AdminOrdersPage() {
                     <span style={{display:"inline-flex",padding:"3px 10px",borderRadius:99,fontSize:11,fontWeight:600,background:sc.bg,color:sc.color}}>
                       {o.status.replace(/_/g," ")}
                     </span>
+                  </td>
+                  <td style={{...S.td,textAlign:"center" as const}}>
+                    <input type="checkbox" checked={o.invoiced ?? false}
+                      onChange={e=>invoicedMutation.mutate({orderId:o.id,invoiced:e.target.checked})}
+                      style={{width:16,height:16,cursor:"pointer",accentColor:"#88dde1"}}
+                      title={o.invoiced?"Invoiced":"Not invoiced yet"} />
                   </td>
                   <td style={S.td}>
                     <button style={{...S.btnGhost,padding:"5px 10px",fontSize:12}} onClick={()=>{setEditing(o);setNewStatus(o.status);setTracking(o.trackingNumber??"");setCarrier(o.carrierName??"");setNote("")}}>
